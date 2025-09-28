@@ -23,7 +23,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- You can add other activities, services, etc. here later -->
+
+        <activity
+            android:name=".DetailActivity"
+            android:label="Chapter Details" /> <!-- You can set a default label or use @string resource -->
+        <!-- <caret> -->
     </application>
 
 </manifest>

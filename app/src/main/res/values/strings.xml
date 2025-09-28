@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Kada Chabuk</string> <!-- Or your app name -->
+    <string name="select_language_prompt">Select Language</string>
+
+    <string-array name="language_names">
+        <item>বাংলা (Bengali)</item>
+        <item>हिन्दी (Hindi)</item>
+        <item>English</item>
+        <item>অসমীয়া (Assamese)</item>
+        <item>ଓଡିଆ (Odia)</item>
+        <item>தமிழ் (Tamil)</item>
+    </string-array>
+
+    <string-array name="language_codes">
+        <item>bn</item>
+        <item>hi</item>
+        <item>en</item>
+        <item>as</item>
+        <item>od</item>
+        <item>tm</item>
+    </string-array>
+</resources>

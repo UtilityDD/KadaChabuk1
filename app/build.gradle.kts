@@ -1,8 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.21" // Or your Kotlin version
 }
-
 android {
     namespace = "com.blackgrapes.kadachabuk"
     compileSdk = 36
@@ -52,5 +52,5 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0") // For ViewModel
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0") // For LiveData
     implementation("androidx.recyclerview:recyclerview:1.3.2") // For displaying lists
-
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0") // Or latest version
 }

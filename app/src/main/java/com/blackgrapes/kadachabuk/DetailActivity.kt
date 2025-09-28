@@ -5,23 +5,38 @@ import android.os.Bundle
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
-import android.widget.ScrollView // Or androidx.core.widget.NestedScrollView
+import android.widget.ImageView // <-- IMPORT THIS
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat // <-- IMPORT THIS
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import kotlin.random.Random // <-- IMPORT THIS
 
 class DetailActivity : AppCompatActivity() {
 
     private lateinit var scrollView: ScrollView
+    private lateinit var imageViewHeader: ImageView // <-- DECLARE ImageView
     private var isFullScreen = false
-    // Threshold to ENTER fullscreen when scrolling DOWN
     private val enterFullScreenScrollThreshold = 200
-    // Threshold to EXIT fullscreen when scrolling UP (can be different, e.g., less sensitive)
-    // Or, you might want to exit when scrollY is very low (near the top)
-    private val exitFullScreenScrollThreshold = 100 // Pixels from top to exit, or simply scroll up past original entry threshold
+    private val exitFullScreenScrollThreshold = 100
+
+    // Array of your drawable resource IDs
+    private val headerImageDrawables = intArrayOf(
+        R.drawable.thakur1, // Replace with your actual drawable names
+        R.drawable.thakur2,
+        R.drawable.thakur3,
+        R.drawable.thakur4,
+        R.drawable.thakur5,
+        R.drawable.thakur6,
+        R.drawable.thakur7,
+        R.drawable.thakur8,
+        R.drawable.thakur9
+        // Add all your header image drawables here
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,6 +45,7 @@ class DetailActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         scrollView = findViewById(R.id.scrollView)
+        imageViewHeader = findViewById(R.id.imageViewHeader) // <-- INITIALIZE ImageView
 
         val textViewHeading: TextView = findViewById(R.id.textViewHeading)
         val textViewDate: TextView = findViewById(R.id.textViewDate)
@@ -44,41 +60,56 @@ class DetailActivity : AppCompatActivity() {
         textViewData.text = dataContent
         title = heading ?: "Details"
 
+        // Set a random header image
+        setRandomHeaderImage()
+
         ViewCompat.setOnApplyWindowInsetsListener(scrollView) { view, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            // Apply padding only if not in fullscreen to avoid jumpiness when exiting
+            val originalPaddingTop = view.getTag(R.id.tag_original_padding_top) as? Int ?: 0
+            val newPaddingTop = if (!isFullScreen) insets.top + originalPaddingTop else originalPaddingTop
+
             if (!isFullScreen) {
+                // When not in fullscreen, apply insets to the ScrollView's padding
+                // The ImageView is outside this direct padding adjustment, it benefits from setDecorFitsSystemWindows
                 view.setPadding(insets.left, insets.top, insets.right, insets.bottom)
             } else {
-                // When in fullscreen, system bars are hidden, so minimal/no padding needed from insets
-                // You might still want some base padding defined in your XML or apply it here
-                view.setPadding(view.paddingLeft, 0, view.paddingRight, 0) // Example: clear top/bottom system padding
+                // When in fullscreen, system bars are hidden.
+                // We want the ScrollView itself to not have extra top padding from insets
+                view.setPadding(view.paddingLeft, 0, view.paddingRight, 0)
             }
             WindowInsetsCompat.CONSUMED
         }
 
+
         scrollView.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
             if (scrollY > oldScrollY && scrollY > enterFullScreenScrollThreshold && !isFullScreen) {
-                // Scrolling DOWN past threshold, and not yet fullscreen
                 enterFullScreen()
             } else if (scrollY < oldScrollY && isFullScreen) {
-                // Scrolling UP, and currently fullscreen
-                // Exit if scrolled back above the initial entry threshold,
-                // OR if scrolled near the top (e.g., scrollY < exitFullScreenScrollThreshold)
-                if (scrollY < enterFullScreenScrollThreshold) { // Simple: exit if scrolled back above where fullscreen was triggered
-                    // A more robust way could be:
-                    // if (scrollY < exitFullScreenScrollThreshold || scrollY == 0) { // Exit if scrolled significantly up or to the very top
+                if (scrollY < enterFullScreenScrollThreshold) {
                     exitFullScreen()
                 }
             } else if (scrollY == 0 && isFullScreen) {
-                // Special case: if scrolled to the very top and still in fullscreen, exit.
                 exitFullScreen()
             }
         }
     }
 
+    private fun setRandomHeaderImage() {
+        if (headerImageDrawables.isNotEmpty()) {
+            val randomIndex = Random.nextInt(headerImageDrawables.size)
+            val randomImageResId = headerImageDrawables[randomIndex]
+            // imageViewHeader.setImageResource(randomImageResId) // Simple way
+            // For potentially smoother loading with large images or more control:
+            imageViewHeader.setImageDrawable(ContextCompat.getDrawable(this, randomImageResId))
+        } else {
+            // Optional: Hide ImageView or set a default placeholder if no images are available
+            imageViewHeader.visibility = View.GONE
+        }
+    }
+
     private fun enterFullScreen() {
-        if (isFullScreen) return // Already fullscreen
+        // ... (enterFullScreen logic remains the same)
+        if (isFullScreen) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.let {
@@ -97,13 +128,14 @@ class DetailActivity : AppCompatActivity() {
         }
         supportActionBar?.hide()
         isFullScreen = true
-        // Request insets update if needed, though exiting fullscreen and re-applying padding
-        // via the listener might be more reliable for the padding change.
-        // For a smoother transition, you might animate the padding changes.
+        // After entering fullscreen, we want the ScrollView to not have extra top padding from insets.
+        // Requesting insets again will trigger the listener, which now adjusts padding based on isFullScreen.
+        ViewCompat.requestApplyInsets(scrollView)
     }
 
     private fun exitFullScreen() {
-        if (!isFullScreen) return // Already not fullscreen
+        // ... (exitFullScreen logic remains the same)
+        if (!isFullScreen) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
@@ -111,26 +143,17 @@ class DetailActivity : AppCompatActivity() {
             @Suppress("DEPRECATION")
             window.decorView.systemUiVisibility = (
                     View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    // Optionally, re-add SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    // and SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN if you still want
-                    // the layout to go edge-to-edge even when bars are visible.
-                    // For simplicity here, we clear most fullscreen flags.
                     )
         }
         supportActionBar?.show()
         isFullScreen = false
-        // Important: After exiting fullscreen, we need to re-apply the insets for padding.
-        // Requesting a new layout pass will trigger the OnApplyWindowInsetsListener.
         ViewCompat.requestApplyInsets(scrollView)
     }
 
     override fun onPause() {
         super.onPause()
-        // Good practice: If activity is paused while in fullscreen, exit fullscreen
-        // to prevent UI issues if the app is backgrounded and then returned to.
         if (isFullScreen) {
             exitFullScreen()
         }
     }
 }
-

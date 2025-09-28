@@ -1,6 +1,7 @@
 <resources>
-    <string name="app_name">Kada Chabuk</string> <!-- Or your app name -->
+    <string name="app_name">Kada Chabuk</string>
     <string name="select_language_prompt">Select Language</string>
+        <string name="chapter_header_image_description">Chapter header image</string>
 
     <string-array name="language_names">
         <item>বাংলা (Bengali)</item>

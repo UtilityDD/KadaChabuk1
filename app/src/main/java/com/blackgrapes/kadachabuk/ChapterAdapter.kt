@@ -30,6 +30,8 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
                 putExtra("EXTRA_DATE", chapter.date ?: "N/A")
                 putExtra("EXTRA_WRITER", chapter.writer)
                 putExtra("EXTRA_DATA", chapter.dataText) // ✅ use dataText instead of data
+                putExtra("EXTRA_SERIAL", chapter.serial)
+                putExtra("EXTRA_LANGUAGE_CODE", chapter.languageCode)
             }
             context.startActivity(intent)
         }

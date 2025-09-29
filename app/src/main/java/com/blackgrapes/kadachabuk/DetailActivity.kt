@@ -18,12 +18,14 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
 import kotlin.random.Random // <-- IMPORT THIS
 
 private const val FONT_PREFS = "FontPrefs"
 private const val KEY_FONT_SIZE = "fontSize"
 private const val DEFAULT_FONT_SIZE = 16f
+private const val SCROLL_PREFS = "ScrollPositions"
 
 class DetailActivity : AppCompatActivity() {
 
@@ -34,6 +36,8 @@ class DetailActivity : AppCompatActivity() {
     private val exitFullScreenScrollThreshold = 100
     private lateinit var textViewData: TextView
     private lateinit var fontSettingsButton: ImageButton
+    private lateinit var chapterSerial: String
+    private lateinit var languageCode: String
 
     // Array of your drawable resource IDs
     private val headerImageDrawables = intArrayOf(
@@ -68,6 +72,8 @@ class DetailActivity : AppCompatActivity() {
         val date = intent.getStringExtra("EXTRA_DATE")
         val dataContent = intent.getStringExtra("EXTRA_DATA")
         val writer = intent.getStringExtra("EXTRA_WRITER")
+        chapterSerial = intent.getStringExtra("EXTRA_SERIAL") ?: ""
+        languageCode = intent.getStringExtra("EXTRA_LANGUAGE_CODE") ?: ""
 
         textViewHeading.text = heading
         textViewDate.text = date?.removeSurrounding("(", ")")
@@ -77,6 +83,9 @@ class DetailActivity : AppCompatActivity() {
         loadAndApplyFontSize()
         textViewWriter.text = writer
         setupFontSettingsButton()
+
+        // Check for a saved scroll position and prompt the user
+        checkForSavedScrollPosition()
 
         // Set a random header image
         setRandomHeaderImage()
@@ -108,6 +117,44 @@ class DetailActivity : AppCompatActivity() {
                 }
             } else if (scrollY == 0 && isFullScreen) {
                 exitFullScreen()
+            }
+        }
+    }
+
+    private fun getScrollPositionKey(): String? {
+        return if (::chapterSerial.isInitialized && ::languageCode.isInitialized && chapterSerial.isNotEmpty() && languageCode.isNotEmpty()) {
+            "scroll_pos_${languageCode}_${chapterSerial}"
+        } else {
+            null
+        }
+    }
+
+    private fun saveScrollPosition() {
+        getScrollPositionKey()?.let { key ->
+            val sharedPreferences = getSharedPreferences(SCROLL_PREFS, Context.MODE_PRIVATE)
+            with(sharedPreferences.edit()) {
+                putInt(key, scrollView.scrollY)
+                apply()
+            }
+        }
+    }
+
+    private fun checkForSavedScrollPosition() {
+        getScrollPositionKey()?.let { key ->
+            val sharedPreferences = getSharedPreferences(SCROLL_PREFS, Context.MODE_PRIVATE)
+            val savedScrollY = sharedPreferences.getInt(key, 0)
+
+            if (savedScrollY > 100) { // Only prompt if they've scrolled a bit
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Continue from where you left off?")
+                    .setPositiveButton("Resume") { dialog, _ ->
+                        scrollView.post { scrollView.smoothScrollTo(0, savedScrollY) }
+                        dialog.dismiss()
+                    }
+                    .setNegativeButton("Start Over") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .show()
             }
         }
     }
@@ -213,5 +260,6 @@ class DetailActivity : AppCompatActivity() {
         if (isFullScreen) {
             exitFullScreen()
         }
+        saveScrollPosition()
     }
 }

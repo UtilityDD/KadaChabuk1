@@ -26,26 +26,32 @@
                 android:layout_height="40dp"
                 android:layout_gravity="center"
                 android:adjustViewBounds="true"
-                android:src="@drawable/loading_icon"
+                app:tint="?attr/colorOnSurface"
+                android:src="@drawable/loading_icon" 
                 android:contentDescription="@string/app_name" />
 
-            <ImageButton
-                android:id="@+id/button_language_change"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+            <LinearLayout
                 android:layout_gravity="end"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/change_language_description"
-                android:src="@drawable/ic_language" />
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
 
-            <ImageButton
-                android:id="@+id/button_theme_toggle"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_gravity="end"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/theme_toggle_description"
-                tools:src="@drawable/ic_light_mode" />
+                <ImageButton
+                    android:id="@+id/button_language_change"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/change_language_description"
+                    android:src="@drawable/ic_language" />
+
+                <ImageButton
+                    android:id="@+id/button_theme_toggle"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/theme_toggle_description"
+                    tools:src="@drawable/ic_light_mode" />
+            </LinearLayout>
 
         </com.google.android.material.appbar.MaterialToolbar>
 

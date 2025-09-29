@@ -18,12 +18,14 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
 
     override fun onBindViewHolder(holder: ChapterViewHolder, position: Int) {
         val chapter = chapters[position]
+        holder.serialTextView.text = chapter.serial
         holder.bind(chapter)
 
         // Handle click → open DetailActivity
         holder.itemView.setOnClickListener {
             val context = holder.itemView.context
             val intent = Intent(context, DetailActivity::class.java).apply {
+                // Note: EXTRA_WRITER is still passed for DetailActivity, but not displayed on the card.
                 putExtra("EXTRA_HEADING", chapter.heading)
                 putExtra("EXTRA_DATE", chapter.date ?: "N/A")
                 putExtra("EXTRA_WRITER", chapter.writer)
@@ -42,13 +44,13 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
 
     class ChapterViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val headingTextView: TextView = itemView.findViewById(R.id.textViewHeading)
-        private val writerTextView: TextView = itemView.findViewById(R.id.textViewWriter)
         private val dateTextView: TextView = itemView.findViewById(R.id.textViewDate)
+        val serialTextView: TextView = itemView.findViewById(R.id.textViewSerial)
 
         fun bind(chapter: Chapter) {
             headingTextView.text = chapter.heading
-            writerTextView.text = chapter.writer
-            dateTextView.text = chapter.date ?: "N/A"
+            // Remove parentheses from the date string, e.g., (dd/mm/yyyy) -> dd/mm/yyyy
+            dateTextView.text = chapter.date?.removeSurrounding("(", ")") ?: "N/A"
         }
     }
 }

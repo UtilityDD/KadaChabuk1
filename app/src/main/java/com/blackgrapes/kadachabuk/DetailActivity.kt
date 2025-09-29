@@ -1,10 +1,14 @@
 package com.blackgrapes.kadachabuk
 
+import android.app.Dialog
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.widget.ImageButton
 import android.widget.ImageView // <-- IMPORT THIS
 import android.widget.ScrollView
 import android.widget.TextView
@@ -14,7 +18,12 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.google.android.material.slider.Slider
 import kotlin.random.Random // <-- IMPORT THIS
+
+private const val FONT_PREFS = "FontPrefs"
+private const val KEY_FONT_SIZE = "fontSize"
+private const val DEFAULT_FONT_SIZE = 16f
 
 class DetailActivity : AppCompatActivity() {
 
@@ -23,6 +32,8 @@ class DetailActivity : AppCompatActivity() {
     private var isFullScreen = false
     private val enterFullScreenScrollThreshold = 200
     private val exitFullScreenScrollThreshold = 100
+    private lateinit var textViewData: TextView
+    private lateinit var fontSettingsButton: ImageButton
 
     // Array of your drawable resource IDs
     private val headerImageDrawables = intArrayOf(
@@ -49,16 +60,20 @@ class DetailActivity : AppCompatActivity() {
 
         val textViewHeading: TextView = findViewById(R.id.textViewHeading)
         val textViewDate: TextView = findViewById(R.id.textViewDate)
-        val textViewData: TextView = findViewById(R.id.textViewData)
+        textViewData = findViewById(R.id.textViewData)
+        fontSettingsButton = findViewById(R.id.button_font_settings)
 
         val heading = intent.getStringExtra("EXTRA_HEADING")
         val date = intent.getStringExtra("EXTRA_DATE")
         val dataContent = intent.getStringExtra("EXTRA_DATA")
 
         textViewHeading.text = heading
-        textViewDate.text = date
+        textViewDate.text = date?.removeSurrounding("(", ")")
         textViewData.text = dataContent
         title = heading ?: "Details"
+
+        loadAndApplyFontSize()
+        setupFontSettingsButton()
 
         // Set a random header image
         setRandomHeaderImage()
@@ -105,6 +120,46 @@ class DetailActivity : AppCompatActivity() {
             // Optional: Hide ImageView or set a default placeholder if no images are available
             imageViewHeader.visibility = View.GONE
         }
+    }
+
+    private fun setupFontSettingsButton() {
+        fontSettingsButton.setOnClickListener {
+            showFontSettingsDialog()
+        }
+    }
+
+    private fun showFontSettingsDialog() {
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.dialog_font_settings)
+        dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        val slider = dialog.findViewById<Slider>(R.id.font_size_slider)
+        slider.value = textViewData.textSize / resources.displayMetrics.scaledDensity
+
+        slider.addOnChangeListener { _, value, _ ->
+            textViewData.textSize = value
+        }
+
+        dialog.setOnDismissListener {
+            saveFontSize(textViewData.textSize / resources.displayMetrics.scaledDensity)
+        }
+
+        dialog.show()
+    }
+
+    private fun saveFontSize(size: Float) {
+        val sharedPreferences = getSharedPreferences(FONT_PREFS, Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            putFloat(KEY_FONT_SIZE, size)
+            apply()
+        }
+    }
+
+    private fun loadAndApplyFontSize() {
+        val sharedPreferences = getSharedPreferences(FONT_PREFS, Context.MODE_PRIVATE)
+        val fontSize = sharedPreferences.getFloat(KEY_FONT_SIZE, DEFAULT_FONT_SIZE)
+        textViewData.textSize = fontSize
     }
 
     private fun enterFullScreen() {

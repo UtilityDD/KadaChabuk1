@@ -1,63 +1,82 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/scrollView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    tools:context=".DetailActivity">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingTop="0dp"
-        android:paddingStart="0dp"
-        android:paddingEnd="0dp"
-        android:paddingBottom="16dp"
-        tools:context=".DetailActivity">
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Header image -->
-        <ImageView
-            android:id="@+id/imageViewHeader"
-            android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:scaleType="centerCrop"
-            android:contentDescription="@string/chapter_header_image_description"
-            tools:srcCompat="@drawable/thakur1" />
-
-        <!-- Centered Header Text Section -->
-        <TextView
-            android:id="@+id/textViewHeading"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
-            android:textAppearance="?attr/textAppearanceHeadline5"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:layout_marginTop="16dp"
-            tools:text="Chapter Title" />
+            android:orientation="vertical"
+            android:paddingBottom="16dp">
 
-        <TextView
-            android:id="@+id/textViewDate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center_horizontal"
-            android:textAppearance="?attr/textAppearanceCaption"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            tools:text="January 1, 2024" />
+            <!-- Header image -->
+            <ImageView
+                android:id="@+id/imageViewHeader"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:contentDescription="@string/chapter_header_image_description"
+                android:scaleType="centerCrop"
+                tools:srcCompat="@drawable/thakur1" />
 
-        <TextView
-            android:id="@+id/textViewData"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:textAppearance="?attr/textAppearanceBody1"
-            tools:text="This is the detailed content..." />
+            <!-- Centered Header Text Section -->
+            <TextView
+                android:id="@+id/textViewHeading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center_horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textAppearance="?attr/textAppearanceHeadline5"
+                tools:text="Chapter Title" />
 
-    </LinearLayout>
-</ScrollView>
+            <TextView
+                android:id="@+id/textViewDate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textAppearance="?attr/textAppearanceCaption"
+                tools:text="January 1, 2024" />
+
+            <TextView
+                android:id="@+id/textViewData"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textAppearance="?attr/textAppearanceBody1"
+                tools:text="This is the detailed content..." />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <ImageButton
+        android:id="@+id/button_font_settings"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/scrim_background_button"
+        android:contentDescription="Adjust font size"
+        android:src="@drawable/ic_font_size"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

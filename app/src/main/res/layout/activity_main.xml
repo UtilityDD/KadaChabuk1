@@ -43,7 +43,6 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_gravity="end"
-                android:layout_marginEnd="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/theme_toggle_description"
                 tools:src="@drawable/ic_light_mode" />

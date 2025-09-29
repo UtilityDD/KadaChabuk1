@@ -7,6 +7,7 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <!-- Your existing Spinner and RecyclerView for main content -->
     <Spinner
         android:id="@+id/spinnerLanguage"
         android:layout_width="0dp"
@@ -31,15 +32,60 @@
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:listitem="@layout/item_chapter_card" />
 
-    <ProgressBar
-        android:id="@+id/progressBar"
+    <!-- Loading Overlay Group - Initially Gone -->
+    <androidx.constraintlayout.widget.Group
+        android:id="@+id/loading_group"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        tools:visibility="visible"/>
+        app:constraint_referenced_ids="lottie_animation_view,tv_loading_status,rv_downloaded_chapter_headings"
+        tools:visibility="visible" />
+
+    <com.airbnb.lottie.LottieAnimationView
+        android:id="@+id/lottie_animation_view"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        app:lottie_rawRes="@raw/successful"
+    app:lottie_autoPlay="true"
+    app:lottie_loop="true"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintBottom_toTopOf="@+id/tv_loading_status"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintVertical_chainStyle="packed"
+    app:layout_constraintVertical_bias="0.4"
+    />
+
+    <TextView
+        android:id="@+id/tv_loading_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Downloading content..."
+        android:textAppearance="?attr/textAppearanceSubtitle1"
+        app:layout_constraintTop_toBottomOf="@+id/lottie_animation_view"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_downloaded_chapter_headings"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+    android:maxHeight="200dp"
+    android:layout_marginStart="32dp"
+    android:layout_marginEnd="32dp"
+    android:layout_marginTop="24dp"
+    android:layout_marginBottom="16dp"
+    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+    app:layout_constraintTop_toBottomOf="@+id/tv_loading_status"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintVertical_bias="0.0"
+    tools:listitem="@layout/item_downloaded_chapter_heading"
+    tools:itemCount="3"
+    />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

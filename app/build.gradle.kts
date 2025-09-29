@@ -36,6 +36,7 @@ android {
 }
 
 dependencies {
+    implementation ("com.airbnb.android:lottie:5.2.0")
     implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.9.3") // Or latest version
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

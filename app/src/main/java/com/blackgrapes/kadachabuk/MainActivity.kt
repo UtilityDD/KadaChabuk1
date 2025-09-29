@@ -1,31 +1,45 @@
 package com.blackgrapes.kadachabuk
 
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.ProgressBar
 import android.widget.Spinner
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.Group
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.glance.visibility
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.airbnb.lottie.LottieAnimationView
 
 class MainActivity : AppCompatActivity() {
 
     private val bookViewModel: BookViewModel by viewModels()
+
     private lateinit var chapterAdapter: ChapterAdapter
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var progressBar: ProgressBar
+    private lateinit var recyclerViewChapters: RecyclerView
     private lateinit var languageSpinner: Spinner
+
+    private lateinit var loadingGroup: Group
+    private lateinit var lottieAnimationView: LottieAnimationView
+    private lateinit var tvLoadingStatus: TextView
+    private lateinit var rvDownloadedChapterHeadings: RecyclerView
+    private lateinit var downloadedHeadingsAdapter: DownloadedChaptersAdapter
 
     private lateinit var languageCodes: Array<String>
     private lateinit var languageNames: Array<String>
+
+    // Define a string resource for the default loading message if not already present
+    // For example, in res/values/strings.xml:
+    // <string name="loading_status_default">Loading...</string>
+    // <string name="loading_status_processing">Processing chapters...</string>
+    // <string name="loading_status_preparing">Preparing data...</string>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,28 +52,44 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        recyclerView = findViewById(R.id.recyclerViewChapters)
-        progressBar = findViewById(R.id.progressBar)
-        languageSpinner = findViewById(R.id.spinnerLanguage)
-
-        // Load language arrays from resources
-        languageNames = resources.getStringArray(R.array.language_names)
-        languageCodes = resources.getStringArray(R.array.language_codes)
-
-        setupRecyclerView()
-        setupLanguageSpinner() // New function to set up the spinner
+        initializeViews()
+        loadLanguageArrays()
+        setupAdaptersAndRecyclerViews()
+        setupLanguageSpinner()
         observeViewModel()
-
-        // No initial load here; it will be triggered by the spinner's default selection or user interaction
-        // If you want a default language loaded on startup before user interaction:
-        // bookViewModel.loadChapters(languageCodes[0]) // Loads the first language in the array
     }
 
-    private fun setupRecyclerView() {
+    private fun initializeViews() {
+        recyclerViewChapters = findViewById(R.id.recyclerViewChapters)
+        languageSpinner = findViewById(R.id.spinnerLanguage)
+        loadingGroup = findViewById(R.id.loading_group)
+        lottieAnimationView = findViewById(R.id.lottie_animation_view)
+        tvLoadingStatus = findViewById(R.id.tv_loading_status)
+        rvDownloadedChapterHeadings = findViewById(R.id.rv_downloaded_chapter_headings)
+        lottieAnimationView.loop(true)
+    }
+
+    private fun loadLanguageArrays() {
+        languageNames = resources.getStringArray(R.array.language_names)
+        languageCodes = resources.getStringArray(R.array.language_codes)
+    }
+
+    private fun setupAdaptersAndRecyclerViews() {
         chapterAdapter = ChapterAdapter(emptyList())
-        recyclerView.apply {
+        recyclerViewChapters.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = chapterAdapter
+        }
+
+        try {
+            downloadedHeadingsAdapter = DownloadedChaptersAdapter(mutableListOf())
+            rvDownloadedChapterHeadings.apply {
+                layoutManager = LinearLayoutManager(this@MainActivity)
+                adapter = downloadedHeadingsAdapter
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error setting up DownloadedChaptersAdapter.", e)
+            Toast.makeText(this, "Error initializing download progress display.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -72,62 +102,102 @@ class MainActivity : AppCompatActivity() {
         languageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val selectedLanguageCode = languageCodes[position]
-                // Clear previous chapters when language changes to provide better UX
+                Log.d("MainActivity", "Language selected: $selectedLanguageCode. Requesting chapters.")
                 chapterAdapter.updateChapters(emptyList())
-                recyclerView.visibility = View.GONE // Hide recycler while new language loads
-                bookViewModel.loadChapters(selectedLanguageCode)
+                recyclerViewChapters.visibility = View.GONE
+                downloadedHeadingsAdapter.clearItems()
+                bookViewModel.fetchAndLoadChapters(selectedLanguageCode, forceDownload = false)
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-                // Optionally handle the case where nothing is selected
-            }
+            override fun onNothingSelected(parent: AdapterView<*>?) { /* Optionally handle */ }
         }
-
-        // Optional: Set a default selection if you didn't load initial data in onCreate
-        // For example, to select English by default if it's in your list:
-        // val defaultLanguageIndex = languageCodes.indexOf("en")
-        // if (defaultLanguageIndex != -1) {
-        //     languageSpinner.setSelection(defaultLanguageIndex)
-        // } else if (languageCodes.isNotEmpty()) {
-        //     languageSpinner.setSelection(0) // Default to the first language
-        // }
-        // If you load initial data in onCreate, the spinner will reflect that language if you set its selection.
-        // For simplicity, the onItemSelected will trigger the first load when the adapter is set.
     }
 
     private fun observeViewModel() {
         bookViewModel.chapters.observe(this) { chapters ->
+            Log.d("MainActivity", "Chapters LiveData updated. Count: ${chapters?.size ?: 0}")
             chapters?.let {
-                // Update chapters only if the list is not empty or if it's an intended clear
                 if (it.isNotEmpty()) {
                     chapterAdapter.updateChapters(it)
-                    recyclerView.visibility = View.VISIBLE
-                } else if (bookViewModel.isLoading.value == false && bookViewModel.error.value == null) {
-                    // If loading is finished, no error, and chapters are empty, show message.
-                    // This covers the case where a language might legitimately have no chapters.
-                    Toast.makeText(this, "No chapters found for the selected language.", Toast.LENGTH_SHORT).show()
-                    recyclerView.visibility = View.GONE
+                    recyclerViewChapters.visibility = View.VISIBLE
+                } else {
+                    if (bookViewModel.isLoading.value == false && bookViewModel.error.value == null) {
+                        Toast.makeText(this, getString(R.string.no_chapters_found), Toast.LENGTH_SHORT).show()
+                    }
+                    recyclerViewChapters.visibility = View.GONE
                 }
-                // If it's empty due to loading or error, those observers will handle visibility.
             }
         }
 
         bookViewModel.isLoading.observe(this) { isLoading ->
-            progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+            Log.d("MainActivity", "isLoading LiveData updated: $isLoading")
             if (isLoading) {
-                recyclerView.visibility = View.GONE
+                // The visibility of loadingGroup and animation is controlled here.
+                // Text for tvLoadingStatus will be primarily set by loadingStatusMessage observer.
+                // Set a very basic default if loadingStatusMessage hasn't emitted yet.
+                if (tvLoadingStatus.text.isNullOrEmpty() || bookViewModel.loadingStatusMessage.value.isNullOrEmpty()) {
+                    tvLoadingStatus.text = getString(R.string.loading_status_default)
+                }
+                loadingGroup.visibility = View.VISIBLE
+                if (!lottieAnimationView.isAnimating) {
+                    lottieAnimationView.playAnimation()
+                }
+                recyclerViewChapters.visibility = View.GONE
+                languageSpinner.visibility = View.GONE
+            } else {
+                loadingGroup.visibility = View.GONE
+                if (lottieAnimationView.isAnimating) {
+                    lottieAnimationView.cancelAnimation()
+                }
+                languageSpinner.visibility = View.VISIBLE
+                // Optionally clear tvLoadingStatus or set to an idle message if desired
+                // tvLoadingStatus.text = ""
             }
+        }
+
+        bookViewModel.loadingStatusMessage.observe(this) { statusMessage ->
+            // This observer is now the primary driver for tvLoadingStatus text when loading.
+            if (bookViewModel.isLoading.value == true) { // Only update if loading is active
+                if (!statusMessage.isNullOrEmpty()) {
+                    tvLoadingStatus.text = statusMessage
+                    Log.d("MainActivity", "Loading Status Message Update: $statusMessage")
+                } else {
+                    // Fallback to default loading text if message is cleared but still loading
+                    tvLoadingStatus.text = getString(R.string.loading_status_default)
+                }
+            }
+            // If isLoading is false, loadingGroup is hidden, so this text won't be visible.
         }
 
         bookViewModel.error.observe(this) { errorMessage ->
             errorMessage?.let {
+                Log.e("MainActivity", "Error LiveData updated: $it")
                 Toast.makeText(this, it, Toast.LENGTH_LONG).show()
-                // Only hide recycler view if there are no chapters to show from a previous successful load
+                // Loading UI is already hidden by isLoading observer when it goes to false
+                // (which should happen on error in ViewModel)
                 if (bookViewModel.chapters.value.isNullOrEmpty()) {
-                    recyclerView.visibility = View.GONE
+                    recyclerViewChapters.visibility = View.GONE
                 }
-                bookViewModel.onErrorShown() // Reset error after showing
+                bookViewModel.onErrorShown()
             }
         }
+
+        /*
+        // Example for observing detailed download progress from ViewModel if implemented:
+        bookViewModel.downloadProgress.observe(this) { progress ->
+            progress?.let {
+                if (bookViewModel.isDownloading.value == true) { // Assuming an isDownloading LiveData
+                    tvLoadingStatus.text = "Downloading... $it%"
+                }
+            }
+        }
+
+        bookViewModel.downloadingChaptersList.observe(this) { downloadingList ->
+           downloadedHeadingsAdapter.updateList(downloadingList)
+           if (downloadingList.isNotEmpty() && rvDownloadedChapterHeadings.visibility == View.VISIBLE) {
+               rvDownloadedChapterHeadings.smoothScrollToPosition(downloadedHeadingsAdapter.itemCount - 1)
+           }
+        }
+        */
     }
 }

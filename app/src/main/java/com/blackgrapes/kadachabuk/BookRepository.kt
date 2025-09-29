@@ -2,8 +2,12 @@ package com.blackgrapes.kadachabuk
 
 import android.content.Context
 import android.util.Log
+// Imports for Room database components
+import com.blackgrapes.kadachabuk.AppDatabase // Ensure this path is correct
+// import com.blackgrapes.kadachabuk.ChapterDao // DAO is accessed via AppDatabase instance
+// import com.blackgrapes.kadachabuk.Chapter // Your Chapter entity
+import com.github.doyaaaaaken.kotlincsv.dsl.csvReader // For parsing CSV
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow // If you want to implement progress later
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
@@ -29,16 +33,16 @@ private val languageToGidMap = mapOf(
 
 class BookRepository(private val context: Context) {
 
-    // Example for download progress (optional, but good for UX)
-    // val downloadProgress = MutableStateFlow<Int?>(null)
-    // val downloadStatusMessage = MutableStateFlow<String?>(null)
+    // Get an instance of the DAO from the AppDatabase
+    private val chapterDao = AppDatabase.getDatabase(context).chapterDao()
 
-    private fun getLocalCsvFile(languageCode: String): File {
-        val dir = File(context.filesDir, "csv_files")
+    // --- Temporary CSV File handling for download and parse ---
+    private fun getTemporaryCsvFile(languageCode: String): File {
+        val dir = File(context.cacheDir, "csv_temp_downloads") // Use cacheDir for temp files
         if (!dir.exists()) {
             dir.mkdirs()
         }
-        return File(dir, "chapters_${languageCode.lowercase()}.csv")
+        return File(dir, "chapters_temp_${languageCode.lowercase()}.csv")
     }
 
     private fun getCsvUrlForLanguage(languageCode: String): URL? {
@@ -55,137 +59,205 @@ class BookRepository(private val context: Context) {
         }
     }
 
-    suspend fun getChapterCsvInputStream(languageCode: String, forceDownload: Boolean = false): Result<InputStream> {
+    /**
+     * Fetches chapters for the given language.
+     * Checks the local Room database first. If data is found and forceRefresh is false,
+     * it returns the cached data. Otherwise, it downloads the CSV, parses it,
+     * updates the database, and then returns the new data.
+     */
+    suspend fun getChaptersForLanguage(
+        languageCode: String,
+        forceRefreshFromServer: Boolean = false,
+        onChapterParsed: (Chapter) -> Unit = {} // Callback for progress
+    ): Result<List<Chapter>> {
         return withContext(Dispatchers.IO) {
-            val localFile = getLocalCsvFile(languageCode)
+            try {
+                val dbChapterCount = chapterDao.getChapterCountForLanguage(languageCode)
+                val isDataInDb = dbChapterCount > 0
 
-            // --- Enhanced Logging for Cache Check ---
-            Log.d("BookRepository", ">>> Checking cache for $languageCode. Path: ${localFile.absolutePath}")
-            Log.d("BookRepository", ">>> forceDownload: $forceDownload")
-            Log.d("BookRepository", ">>> localFile.exists(): ${localFile.exists()}")
-            if (localFile.exists()) {
-                Log.d("BookRepository", ">>> localFile.length(): ${localFile.length()}")
-            }
-            // --- End Enhanced Logging ---
+                if (!forceRefreshFromServer && isDataInDb) {
+                    Log.i("BookRepository", "DB CACHE HIT for $languageCode. Loading $dbChapterCount chapters from database.")
+                    // FIX: Sort the results from the database to maintain sequence.
+                    // We sort by the 'serial' field, treating it as a number.
+                    val chaptersFromDb = chapterDao.getChaptersByLanguage(languageCode)
+                    val sortedChapters = chaptersFromDb.sortedBy { it.serial.toIntOrNull() ?: Int.MAX_VALUE }
+                    Result.success(sortedChapters)
+                } else {
+                    if (forceRefreshFromServer) {
+                        Log.i("BookRepository", "FORCE REFRESH requested for $languageCode. Fetching from server.")
+                    } else {
+                        Log.i("BookRepository", "DB CACHE MISS for $languageCode. Fetching from server.")
+                    }
 
-            if (!forceDownload && localFile.exists() && localFile.length() > 0) {
-                Log.i("BookRepository", ">>> CACHE HIT for $languageCode: Using local file.")
-                try {
-                    Result.success(FileInputStream(localFile))
-                } catch (e: Exception) {
-                    Log.e("BookRepository", "Error opening local CSV for $languageCode", e)
-                    Log.w("BookRepository", "Falling back to download for $languageCode due to error opening local file.")
-                    downloadAndSaveCsv(languageCode, localFile)
+                    // Download the CSV to a temporary file
+                    val downloadResult = downloadCsvToTempFile(languageCode)
+
+                    downloadResult.fold(
+                        onSuccess = { tempCsvFileStream ->
+                            Log.d("BookRepository", "CSV downloaded to temp file for $languageCode. Parsing and updating DB.")
+                            // Parse the CSV stream from the temporary file
+                            val parseResult = parseCsvStreamInternal(languageCode, tempCsvFileStream, onChapterParsed)
+
+                            // Clean up: Close the stream and delete the temp file
+                            try { tempCsvFileStream.close() } catch (e: Exception) { Log.e("BookRepository", "Error closing temp file stream", e) }
+                            getTemporaryCsvFile(languageCode).delete()
+
+                            parseResult.fold(
+                                onSuccess = { parsedChaptersWithoutLang ->
+                                    // Add languageCode to each Chapter object before DB insert
+                                    val chaptersToStoreInDb = parsedChaptersWithoutLang.map { chapter ->
+                                        // Ensure your Chapter data class has 'languageCode' as a var
+                                        // or use .copy() if it's a val and the constructor allows it.
+                                        chapter.copy(languageCode = languageCode)
+                                    }
+
+                                    // Replace existing chapters for this language in the DB
+                                    chapterDao.replaceChaptersForLanguage(languageCode, chaptersToStoreInDb)
+                                    Log.i("BookRepository", "Database updated for $languageCode with ${chaptersToStoreInDb.size} chapters.")
+                                    Result.success(chaptersToStoreInDb) // Return the newly parsed and saved chapters
+                                },
+                                onFailure = { parsingException ->
+                                    Log.e("BookRepository", "Failed to parse CSV for $languageCode after download.", parsingException)
+                                    Result.failure(parsingException)
+                                }
+                            )
+                        },
+                        onFailure = { downloadException ->
+                            Log.e("BookRepository", "Failed to download CSV for $languageCode.", downloadException)
+                            Result.failure(downloadException)
+                        }
+                    )
                 }
-            } else {
-                Log.w("BookRepository", ">>> CACHE MISS for $languageCode. Reason(s):")
-                if (forceDownload) Log.w("BookRepository", " - Force download was true.")
-                if (!localFile.exists()) Log.w("BookRepository", " - Local file does not exist.")
-                if (localFile.exists() && localFile.length() == 0L) Log.w("BookRepository", " - Local file exists but is empty.")
-                Log.d("BookRepository", ">>> Proceeding to download for $languageCode.")
-                // downloadStatusMessage.value = "Downloading ${languageCode.uppercase()} chapters..."
-                // downloadProgress.value = 0
-                downloadAndSaveCsv(languageCode, localFile)
+            } catch (e: Exception) {
+                Log.e("BookRepository", "Error in getChaptersForLanguage for $languageCode", e)
+                Result.failure(e)
             }
         }
     }
 
-    private suspend fun downloadAndSaveCsv(languageCode: String, targetFile: File): Result<InputStream> {
+    /**
+     * Downloads the CSV for the given language to a temporary local file.
+     * Returns a Result containing an InputStream to the temporary file.
+     * The caller is responsible for closing this InputStream and deleting the temp file.
+     */
+    private suspend fun downloadCsvToTempFile(languageCode: String): Result<InputStream> {
         val downloadUrl = getCsvUrlForLanguage(languageCode)
             ?: return Result.failure(IllegalArgumentException("Could not construct URL for language: $languageCode"))
 
-        Log.d("BookRepository", "Attempting to download CSV for $languageCode from: $downloadUrl")
-        // downloadStatusMessage.value = "Downloading ${languageCode.uppercase()} chapters..."
-
-        var successfullyDownloadedAndSaved = false
+        Log.d("BookRepository", "Downloading CSV for $languageCode from: $downloadUrl to a temporary file.")
+        val tempFile = getTemporaryCsvFile(languageCode)
         var connection: HttpURLConnection? = null
-
-        // Ensure target file doesn't exist in a partially downloaded state from a previous failed attempt within this function call
-        if (targetFile.exists()) {
-            // More controlled deletion: only delete if we are about to overwrite it anyway.
-            // If a previous call to this function failed and left a 0-byte file, this is fine.
-            // The main concern is if this function itself creates a 0-byte file due to error.
-        }
 
         try {
             connection = downloadUrl.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
-            connection.connectTimeout = 20000 // 20 seconds
-            connection.readTimeout = 20000  // 20 seconds
+            connection.connectTimeout = 20000
+            connection.readTimeout = 20000
             connection.instanceFollowRedirects = true
             connection.connect()
 
             val responseCode = connection.responseCode
-            Log.d("BookRepository", "Download response code for $languageCode: $responseCode")
-
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 var totalBytesRead = 0L
                 connection.inputStream.use { input ->
-                    // FileOutputStream will create the file if it doesn't exist, or overwrite if it does.
-                    FileOutputStream(targetFile).use { output ->
+                    FileOutputStream(tempFile).use { output ->
                         val buffer = ByteArray(8 * 1024)
                         var bytesRead: Int
                         while (input.read(buffer).also { bytesRead = it } != -1) {
                             output.write(buffer, 0, bytesRead)
                             totalBytesRead += bytesRead
                         }
-                        output.flush() // Ensure all data is written to the file system
+                        output.flush()
                     }
-                } // input stream is closed here
-
-                if (totalBytesRead > 0) {
-                    successfullyDownloadedAndSaved = true
-                    Log.i("BookRepository", "CSV downloaded ($totalBytesRead bytes) and saved for $languageCode to ${targetFile.absolutePath}")
-                } else {
-                    Log.w("BookRepository", "Download for $languageCode completed with HTTP_OK, but 0 bytes were written to file.")
-                    // successfullyDownloadedAndSaved remains false
                 }
-            } else { // HTTP Code was not OK
-                Log.e("BookRepository", "Download failed for $languageCode. Server returned: $responseCode ${connection.responseMessage}")
-                // successfullyDownloadedAndSaved remains false
-            }
-
-            // After attempting download and stream operations:
-            if (!successfullyDownloadedAndSaved && targetFile.exists()) {
-                Log.w("BookRepository", "Deleting unsuccessful/empty download file for $languageCode: ${targetFile.name}")
-                targetFile.delete()
-            }
-
-            return if (successfullyDownloadedAndSaved) {
-                // downloadStatusMessage.value = "Download complete."
-                // downloadProgress.value = 100
-                Result.success(FileInputStream(targetFile))
+                if (totalBytesRead > 0) {
+                    Log.i("BookRepository", "CSV downloaded ($totalBytesRead bytes) to temp file: ${tempFile.absolutePath}")
+                    return Result.success(FileInputStream(tempFile))
+                } else {
+                    Log.w("BookRepository", "Downloaded CSV for $languageCode was empty.")
+                    tempFile.delete()
+                    return Result.failure(Exception("Downloaded CSV for $languageCode was empty."))
+                }
             } else {
-                val errorMsg = "Download was not successful for $languageCode (HTTP: $responseCode, Message: ${connection?.responseMessage}). File not cached or is empty."
-                Log.e("BookRepository", errorMsg)
-                // downloadStatusMessage.value = "Download issue: ${connection?.responseMessage ?: "Unknown"}"
-                Result.failure(Exception(errorMsg))
+                Log.e("BookRepository", "Download failed: $responseCode ${connection.responseMessage}")
+                if(tempFile.exists()) tempFile.delete()
+                return Result.failure(Exception("Download failed: $responseCode ${connection.responseMessage}"))
             }
-
         } catch (e: Exception) {
-            Log.e("BookRepository", "Exception during download process for $languageCode", e)
-            if (targetFile.exists()) { // Clean up on any exception during the process
-                Log.w("BookRepository", "Deleting file after exception during download for $languageCode: ${targetFile.name}")
-                targetFile.delete()
-            }
-            // downloadStatusMessage.value = "Download error: ${e.message}"
+            Log.e("BookRepository", "Exception during CSV download to temp file", e)
+            if(tempFile.exists()) tempFile.delete()
             return Result.failure(e)
         } finally {
             connection?.disconnect()
-            // downloadProgress.value = null // Reset progress
         }
     }
 
-    // This method is less relevant if the ViewModel is responsible for parsing.
-    /*
-    suspend fun getChapters(languageCode: String, forceDownload: Boolean = false): Result<List<Chapter>> {
-        return getChapterCsvInputStream(languageCode, forceDownload).mapCatching { inputStream ->
-            // Move your CSV parsing logic here if you want Repository to return List<Chapter>
-            // For example:
-            // val parsedChapters = withContext(Dispatchers.IO) { parseCsvStreamInternal(inputStream) }
-            // parsedChapters
-            emptyList() // Placeholder
+    /**
+     * Internal CSV parsing logic.
+     * Parses the given InputStream and returns a list of Chapter objects (without languageCode set).
+     */
+    private suspend fun parseCsvStreamInternal(
+        languageCodeForLog: String,
+        csvInputStream: InputStream,
+        onChapterParsed: (Chapter) -> Unit // Accept the callback
+    ): Result<List<Chapter>> {
+        return try {
+            Log.d("BookRepository", "Starting internal CSV parsing for $languageCodeForLog.")
+            val parsedList = withContext(Dispatchers.IO) {
+                val chapterList = mutableListOf<Chapter>()
+                val isHeaderRow = { row: List<String> ->
+                    row.any {
+                        it.trim().equals("heading", ignoreCase = true) ||
+                                it.trim().equals("date", ignoreCase = true) ||
+                                it.trim().equals("writer", ignoreCase = true) ||
+                                it.trim().equals("serial", ignoreCase = true)
+                    }
+                }
+
+                csvReader { skipEmptyLine = true }.open(csvInputStream) { // csvInputStream will be closed by this block
+                    readAllAsSequence().forEachIndexed forEach@{ index, row ->
+                        // FIX: Simplify header check. Only skip the very first row if it's a header.
+                        if (index == 0 && isHeaderRow(row)) {
+                            return@forEach // Skip header row
+                        }
+                        // ...
+                        // ...
+                        // ...
+                        if (row.size >= 6) {
+                            val chapter = Chapter(
+                                // id and languageCode are handled elsewhere or by Room's defaults
+                                heading = row.getOrElse(0) { "Unknown Heading" }.trim(),
+                                date = row.getOrElse(1) { "" }.trim().let { if (it.isNotEmpty()) it else null },
+                                writer = row.getOrElse(2) { "Unknown Writer" }.trim(),
+                                dataText = row.getOrElse(3) { "No Data" }.trim(), // Ensure this line is present and correct
+                                serial = row.getOrElse(4) { "N/A" }.trim(),
+                                version = row.getOrElse(5) { "N/A" }.trim()
+                            )
+                            chapterList.add(chapter)
+                            onChapterParsed(chapter) // Invoke the callback with the newly parsed chapter
+                        } else {
+                            Log.w("BookRepository", "Skipping malformed CSV row for $languageCodeForLog (expected at least 6 columns, found ${row.size})")
+                        }
+                        // ...
+
+                        // ...
+
+                        // ...
+
+                    }
+                }
+                chapterList
+            }
+            Log.i("BookRepository", "Internal CSV parsing complete for $languageCodeForLog. Found ${parsedList.size} chapters.")
+            Result.success(parsedList)
+        } catch (e: Exception) {
+            Log.e("BookRepository", "Error during internal CSV parsing for $languageCodeForLog", e)
+            Result.failure(e)
         }
     }
-    */
+
+    // The old getChapterCsvInputStream and downloadAndSaveCsv can now be removed
+    // if getChaptersForLanguage is the sole entry point for fetching chapter data.
+    // If you need to keep them for other purposes, you can, but they are not used
+    // by the getChaptersForLanguage method above.
 }

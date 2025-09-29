@@ -102,11 +102,12 @@ class MainActivity : AppCompatActivity() {
         languageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val selectedLanguageCode = languageCodes[position]
-                Log.d("MainActivity", "Language selected: $selectedLanguageCode. Requesting chapters.")
+                val selectedLanguageName = languageNames[position] // Get the full name
+                Log.d("MainActivity", "Language selected: $selectedLanguageName ($selectedLanguageCode). Requesting chapters.")
                 chapterAdapter.updateChapters(emptyList())
                 recyclerViewChapters.visibility = View.GONE
                 downloadedHeadingsAdapter.clearItems()
-                bookViewModel.fetchAndLoadChapters(selectedLanguageCode, forceDownload = false)
+                bookViewModel.fetchAndLoadChapters(selectedLanguageCode, selectedLanguageName, forceDownload = false)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) { /* Optionally handle */ }
@@ -142,6 +143,7 @@ class MainActivity : AppCompatActivity() {
                 if (!lottieAnimationView.isAnimating) {
                     lottieAnimationView.playAnimation()
                 }
+                rvDownloadedChapterHeadings.visibility = View.VISIBLE // Show progress list
                 recyclerViewChapters.visibility = View.GONE
                 languageSpinner.visibility = View.GONE
             } else {
@@ -149,6 +151,7 @@ class MainActivity : AppCompatActivity() {
                 if (lottieAnimationView.isAnimating) {
                     lottieAnimationView.cancelAnimation()
                 }
+                rvDownloadedChapterHeadings.visibility = View.GONE // Hide progress list
                 languageSpinner.visibility = View.VISIBLE
                 // Optionally clear tvLoadingStatus or set to an idle message if desired
                 // tvLoadingStatus.text = ""
@@ -182,22 +185,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        /*
-        // Example for observing detailed download progress from ViewModel if implemented:
-        bookViewModel.downloadProgress.observe(this) { progress ->
-            progress?.let {
-                if (bookViewModel.isDownloading.value == true) { // Assuming an isDownloading LiveData
-                    tvLoadingStatus.text = "Downloading... $it%"
+        bookViewModel.downloadingChaptersList.observe(this) { downloadingList ->
+            if (bookViewModel.isLoading.value == true) {
+                downloadedHeadingsAdapter.updateList(downloadingList)
+                if (downloadingList.isNotEmpty()) {
+                    rvDownloadedChapterHeadings.smoothScrollToPosition(downloadedHeadingsAdapter.itemCount - 1)
                 }
             }
         }
-
-        bookViewModel.downloadingChaptersList.observe(this) { downloadingList ->
-           downloadedHeadingsAdapter.updateList(downloadingList)
-           if (downloadingList.isNotEmpty() && rvDownloadedChapterHeadings.visibility == View.VISIBLE) {
-               rvDownloadedChapterHeadings.smoothScrollToPosition(downloadedHeadingsAdapter.itemCount - 1)
-           }
-        }
-        */
     }
 }

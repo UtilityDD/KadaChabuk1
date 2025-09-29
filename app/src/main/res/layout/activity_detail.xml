@@ -55,6 +55,24 @@
                 tools:text="January 1, 2024" />
 
             <TextView
+                android:id="@+id/textViewWriter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center_horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textAppearance="?attr/textAppearanceCaption"
+                tools:text="Writer Name" />
+
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"/>
+
+            <TextView
                 android:id="@+id/textViewData"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

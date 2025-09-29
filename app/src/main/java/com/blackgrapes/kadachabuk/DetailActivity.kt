@@ -60,12 +60,14 @@ class DetailActivity : AppCompatActivity() {
 
         val textViewHeading: TextView = findViewById(R.id.textViewHeading)
         val textViewDate: TextView = findViewById(R.id.textViewDate)
+        val textViewWriter: TextView = findViewById(R.id.textViewWriter)
         textViewData = findViewById(R.id.textViewData)
         fontSettingsButton = findViewById(R.id.button_font_settings)
 
         val heading = intent.getStringExtra("EXTRA_HEADING")
         val date = intent.getStringExtra("EXTRA_DATE")
         val dataContent = intent.getStringExtra("EXTRA_DATA")
+        val writer = intent.getStringExtra("EXTRA_WRITER")
 
         textViewHeading.text = heading
         textViewDate.text = date?.removeSurrounding("(", ")")
@@ -73,6 +75,7 @@ class DetailActivity : AppCompatActivity() {
         title = heading ?: "Details"
 
         loadAndApplyFontSize()
+        textViewWriter.text = writer
         setupFontSettingsButton()
 
         // Set a random header image

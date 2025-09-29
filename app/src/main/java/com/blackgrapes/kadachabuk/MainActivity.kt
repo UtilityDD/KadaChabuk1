@@ -1,20 +1,25 @@
 package com.blackgrapes.kadachabuk
 
+import android.app.Dialog
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import android.widget.Spinner
+import android.view.ViewGroup
+import android.view.Window
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.Group
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.recyclerview.widget.RecyclerView
 import com.airbnb.lottie.LottieAnimationView
 
@@ -24,8 +29,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var chapterAdapter: ChapterAdapter
     private lateinit var recyclerViewChapters: RecyclerView
-    private lateinit var languageSpinner: Spinner
 
+    private lateinit var themeToggleButton: ImageButton
     private lateinit var loadingGroup: Group
     private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var tvLoadingStatus: TextView
@@ -33,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var downloadedHeadingsAdapter: DownloadedChaptersAdapter
 
     private lateinit var languageCodes: Array<String>
+    private lateinit var languageChangeButton: ImageButton
     private lateinit var languageNames: Array<String>
 
     // Define a string resource for the default loading message if not already present
@@ -43,6 +49,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applySavedTheme()
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
@@ -55,16 +62,19 @@ class MainActivity : AppCompatActivity() {
         initializeViews()
         loadLanguageArrays()
         setupAdaptersAndRecyclerViews()
-        setupLanguageSpinner()
+        setupLanguageChangeButton()
+        setupThemeToggleButton()
+        checkFirstLaunch()
         observeViewModel()
     }
 
     private fun initializeViews() {
         recyclerViewChapters = findViewById(R.id.recyclerViewChapters)
-        languageSpinner = findViewById(R.id.spinnerLanguage)
         loadingGroup = findViewById(R.id.loading_group)
+        themeToggleButton = findViewById(R.id.button_theme_toggle)
         lottieAnimationView = findViewById(R.id.lottie_animation_view)
         tvLoadingStatus = findViewById(R.id.tv_loading_status)
+        languageChangeButton = findViewById(R.id.button_language_change)
         rvDownloadedChapterHeadings = findViewById(R.id.rv_downloaded_chapter_headings)
         lottieAnimationView.loop(true)
     }
@@ -93,24 +103,90 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupLanguageSpinner() {
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, languageNames)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        languageSpinner.adapter = adapter
-        languageSpinner.prompt = getString(R.string.select_language_prompt)
+    private fun setupLanguageChangeButton() {
+        languageChangeButton.setOnClickListener {
+            showLanguageSelectionDialog(isCancelable = true)
+        }
+    }
 
-        languageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val selectedLanguageCode = languageCodes[position]
-                val selectedLanguageName = languageNames[position] // Get the full name
-                Log.d("MainActivity", "Language selected: $selectedLanguageName ($selectedLanguageCode). Requesting chapters.")
-                chapterAdapter.updateChapters(emptyList())
-                recyclerViewChapters.visibility = View.GONE
-                downloadedHeadingsAdapter.clearItems()
-                bookViewModel.fetchAndLoadChapters(selectedLanguageCode, selectedLanguageName, forceDownload = false)
+    private fun checkFirstLaunch() {
+        val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        val savedLangCode = sharedPreferences.getString("selected_language_code", null)
+
+        if (savedLangCode == null) {
+            showLanguageSelectionDialog(isCancelable = false)
+        } else {
+            val savedLangIndex = languageCodes.indexOf(savedLangCode)
+            if (savedLangIndex != -1) {
+                bookViewModel.fetchAndLoadChapters(savedLangCode, languageNames[savedLangIndex], forceDownload = false)
+            } else {
+                // Fallback if saved language is no longer supported
+                showLanguageSelectionDialog(isCancelable = false)
+            }
+        }
+    }
+
+    private fun showLanguageSelectionDialog(isCancelable: Boolean) {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_language_selector)
+        dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.attributes?.windowAnimations = R.style.DialogAnimation
+        dialog.setCancelable(isCancelable)
+
+        val rvLanguages = dialog.findViewById<RecyclerView>(R.id.rv_languages)
+        rvLanguages.layoutManager = LinearLayoutManager(this)
+        (rvLanguages.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
+        val languageAdapter = LanguageAdapter(languageNames.zip(languageCodes).toList()) { langCode, langName ->
+            saveLanguagePreference(langCode)
+            bookViewModel.fetchAndLoadChapters(langCode, langName, forceDownload = false)
+            dialog.dismiss()
+        }
+        rvLanguages.adapter = languageAdapter
+
+        dialog.show()
+    }
+
+    private fun saveLanguagePreference(languageCode: String) {
+        val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            putString("selected_language_code", languageCode)
+            apply()
+        }
+    }
+
+    private fun applySavedTheme() {
+        val sharedPreferences = getSharedPreferences("ThemePrefs", Context.MODE_PRIVATE)
+        val nightMode = sharedPreferences.getInt("NightMode", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+        AppCompatDelegate.setDefaultNightMode(nightMode)
+    }
+
+    private fun setupThemeToggleButton() {
+        updateThemeIcon()
+        themeToggleButton.setOnClickListener {
+            val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+            val newNightMode = if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
+                AppCompatDelegate.MODE_NIGHT_NO
+            } else {
+                AppCompatDelegate.MODE_NIGHT_YES
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) { /* Optionally handle */ }
+            val sharedPreferences = getSharedPreferences("ThemePrefs", Context.MODE_PRIVATE)
+            with(sharedPreferences.edit()) {
+                putInt("NightMode", newNightMode)
+                apply()
+            }
+            AppCompatDelegate.setDefaultNightMode(newNightMode)
+        }
+    }
+
+    private fun updateThemeIcon() {
+        val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
+            themeToggleButton.setImageResource(R.drawable.ic_light_mode)
+        } else {
+            themeToggleButton.setImageResource(R.drawable.ic_dark_mode)
         }
     }
 
@@ -125,7 +201,10 @@ class MainActivity : AppCompatActivity() {
                     if (bookViewModel.isLoading.value == false && bookViewModel.error.value == null) {
                         Toast.makeText(this, getString(R.string.no_chapters_found), Toast.LENGTH_SHORT).show()
                     }
-                    recyclerViewChapters.visibility = View.GONE
+                    // Don't hide the RecyclerView if there are no chapters, just show an empty state.
+                    // This prevents the UI from "jumping" if the user switches to a language with no content.
+                    chapterAdapter.updateChapters(emptyList())
+                    // recyclerViewChapters.visibility = View.GONE
                 }
             }
         }
@@ -145,14 +224,12 @@ class MainActivity : AppCompatActivity() {
                 }
                 rvDownloadedChapterHeadings.visibility = View.VISIBLE // Show progress list
                 recyclerViewChapters.visibility = View.GONE
-                languageSpinner.visibility = View.GONE
             } else {
                 loadingGroup.visibility = View.GONE
                 if (lottieAnimationView.isAnimating) {
                     lottieAnimationView.cancelAnimation()
                 }
                 rvDownloadedChapterHeadings.visibility = View.GONE // Hide progress list
-                languageSpinner.visibility = View.VISIBLE
                 // Optionally clear tvLoadingStatus or set to an idle message if desired
                 // tvLoadingStatus.text = ""
             }

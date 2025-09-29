@@ -1,5 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <!-- Brand & Accent Colors -->
+    <color name="seed">#006A6A</color> <!-- Base color for theme generation -->
+
+    <!-- Light Theme Palette -->
+    <color name="light_primary">#006A6A</color>
+    <color name="light_onPrimary">#FFFFFF</color>
+    <color name="light_primaryContainer">#70F7F7</color>
+    <color name="light_onPrimaryContainer">#002020</color>
+    <color name="light_secondary">#4A6363</color>
+    <color name="light_onSecondary">#FFFFFF</color>
+    <color name="light_secondaryContainer">#CCE8E7</color>
+    <color name="light_onSecondaryContainer">#051F1F</color>
+    <color name="light_surface">#FBF8F2</color> <!-- Linen/Paper background -->
+    <color name="light_onSurface">#212121</color> <!-- Dark gray text -->
+    <color name="light_surfaceContainer">#F5F1E9</color> <!-- Slightly different for cards -->
+    <color name="light_onSurfaceVariant">#757575</color> <!-- Lighter gray for secondary text -->
+
+    <!-- Dark Theme Palette -->
+    <color name="dark_primary">#4CDADA</color>
+    <color name="dark_onPrimary">#003737</color>
+    <color name="dark_primaryContainer">#005050</color>
+    <color name="dark_onPrimaryContainer">#70F7F7</color>
+    <color name="dark_secondary">#B1CCCB</color>
+    <color name="dark_onSecondary">#1B3535</color>
+    <color name="dark_secondaryContainer">#324B4B</color>
+    <color name="dark_onSecondaryContainer">#CCE8E7</color>
+    <color name="dark_surface">#121212</color> <!-- Deep Charcoal background -->
+    <color name="dark_onSurface">#E0E0E0</color> <!-- Off-white text -->
+    <color name="dark_surfaceContainer">#2A2D35</color> <!-- Slightly lighter for cards -->
+    <color name="dark_onSurfaceVariant">#BDBDBD</color> <!-- Medium gray for secondary text -->
 </resources>

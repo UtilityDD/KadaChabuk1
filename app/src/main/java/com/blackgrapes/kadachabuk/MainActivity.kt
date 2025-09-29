@@ -127,6 +127,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLanguageSelectionDialog(isCancelable: Boolean) {
+        val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        val savedLangCode = sharedPreferences.getString("selected_language_code", null)
+
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.dialog_language_selector)
@@ -138,7 +141,7 @@ class MainActivity : AppCompatActivity() {
         val rvLanguages = dialog.findViewById<RecyclerView>(R.id.rv_languages)
         rvLanguages.layoutManager = LinearLayoutManager(this)
         (rvLanguages.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
-        val languageAdapter = LanguageAdapter(languageNames.zip(languageCodes).toList()) { langCode, langName ->
+        val languageAdapter = LanguageAdapter(languageNames.zip(languageCodes).toList(), savedLangCode) { langCode, langName ->
             saveLanguagePreference(langCode)
             bookViewModel.fetchAndLoadChapters(langCode, langName, forceDownload = false)
             dialog.dismiss()

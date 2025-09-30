@@ -32,8 +32,6 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var scrollView: ScrollView
     private lateinit var imageViewHeader: ImageView // <-- DECLARE ImageView
     private var isFullScreen = false
-    private val enterFullScreenScrollThreshold = 200
-    private val exitFullScreenScrollThreshold = 100
     private lateinit var textViewData: TextView
     private lateinit var fontSettingsButton: ImageButton
     private lateinit var chapterSerial: String
@@ -87,38 +85,11 @@ class DetailActivity : AppCompatActivity() {
         // Check for a saved scroll position and prompt the user
         checkForSavedScrollPosition()
 
+        // Enter full screen as soon as the activity is created
+        enterFullScreen()
+
         // Set a random header image
         setRandomHeaderImage()
-
-        ViewCompat.setOnApplyWindowInsetsListener(scrollView) { view, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val originalPaddingTop = view.getTag(R.id.tag_original_padding_top) as? Int ?: 0
-            val newPaddingTop = if (!isFullScreen) insets.top + originalPaddingTop else originalPaddingTop
-
-            if (!isFullScreen) {
-                // When not in fullscreen, apply insets to the ScrollView's padding
-                // The ImageView is outside this direct padding adjustment, it benefits from setDecorFitsSystemWindows
-                view.setPadding(insets.left, insets.top, insets.right, insets.bottom)
-            } else {
-                // When in fullscreen, system bars are hidden.
-                // We want the ScrollView itself to not have extra top padding from insets
-                view.setPadding(view.paddingLeft, 0, view.paddingRight, 0)
-            }
-            WindowInsetsCompat.CONSUMED
-        }
-
-
-        scrollView.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
-            if (scrollY > oldScrollY && scrollY > enterFullScreenScrollThreshold && !isFullScreen) {
-                enterFullScreen()
-            } else if (scrollY < oldScrollY && isFullScreen) {
-                if (scrollY < enterFullScreenScrollThreshold) {
-                    exitFullScreen()
-                }
-            } else if (scrollY == 0 && isFullScreen) {
-                exitFullScreen()
-            }
-        }
     }
 
     private fun getScrollPositionKey(): String? {
@@ -236,30 +207,15 @@ class DetailActivity : AppCompatActivity() {
         // After entering fullscreen, we want the ScrollView to not have extra top padding from insets.
         // Requesting insets again will trigger the listener, which now adjusts padding based on isFullScreen.
         ViewCompat.requestApplyInsets(scrollView)
-    }
-
-    private fun exitFullScreen() {
-        // ... (exitFullScreen logic remains the same)
-        if (!isFullScreen) return
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-        } else {
-            @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility = (
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    )
-        }
-        supportActionBar?.show()
-        isFullScreen = false
-        ViewCompat.requestApplyInsets(scrollView)
+        // We don't need the insets listener anymore, but we can manually adjust padding
+        // to avoid the content jumping under the status bar area.
+        val insets = ViewCompat.getRootWindowInsets(window.decorView)
+        val systemBarInsets = insets?.getInsets(WindowInsetsCompat.Type.systemBars())
+        scrollView.setPadding(systemBarInsets?.left ?: 0, 0, systemBarInsets?.right ?: 0, systemBarInsets?.bottom ?: 0)
     }
 
     override fun onPause() {
         super.onPause()
-        if (isFullScreen) {
-            exitFullScreen()
-        }
         saveScrollPosition()
     }
 }

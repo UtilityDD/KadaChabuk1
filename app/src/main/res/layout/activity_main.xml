@@ -68,13 +68,23 @@
         app:layout_constraintTop_toBottomOf="@id/app_bar_layout"
         tools:listitem="@layout/item_chapter_card" />
 
+    <View
+        android:id="@+id/loading_background"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="?android:colorBackground"
+        app:layout_constraintTop_toBottomOf="@id/app_bar_layout"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
     <!-- Loading Overlay Group - Initially Gone -->
     <androidx.constraintlayout.widget.Group
         android:id="@+id/loading_group"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        app:constraint_referenced_ids="lottie_animation_view,tv_loading_status,rv_downloaded_chapter_headings"
+        app:constraint_referenced_ids="loading_background,lottie_animation_view,tv_loading_status,rv_downloaded_chapter_headings"
         tools:visibility="visible" />
 
     <com.airbnb.lottie.LottieAnimationView
@@ -84,7 +94,7 @@
         app:layout_constraintBottom_toTopOf="@+id/tv_loading_status"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/app_bar_layout"
         app:layout_constraintVertical_bias="0.4"
         app:layout_constraintVertical_chainStyle="packed"
         app:lottie_autoPlay="true"

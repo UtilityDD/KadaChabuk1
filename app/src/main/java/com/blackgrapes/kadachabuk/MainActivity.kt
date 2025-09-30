@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Button
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.ImageButton
@@ -37,6 +38,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var tvLoadingStatus: TextView
     private lateinit var rvDownloadedChapterHeadings: RecyclerView
+    private lateinit var errorGroup: Group
+    private lateinit var errorMessageTextView: TextView
+    private lateinit var retryButton: Button
     private lateinit var downloadedHeadingsAdapter: DownloadedChaptersAdapter
 
     private lateinit var languageCodes: Array<String>
@@ -81,6 +85,9 @@ class MainActivity : AppCompatActivity() {
         tvLoadingStatus = findViewById(R.id.tv_loading_status)
         languageChangeButton = findViewById(R.id.button_language_change)
         rvDownloadedChapterHeadings = findViewById(R.id.rv_downloaded_chapter_headings)
+        errorGroup = findViewById(R.id.error_group)
+        errorMessageTextView = findViewById(R.id.error_message)
+        retryButton = findViewById(R.id.retry_button)
         lottieAnimationView.loop(true)
     }
 
@@ -111,6 +118,17 @@ class MainActivity : AppCompatActivity() {
     private fun setupLanguageChangeButton() {
         languageChangeButton.setOnClickListener {
             showLanguageSelectionDialog(isCancelable = true)
+        }
+    }
+
+    private fun setupRetryButton() {
+        retryButton.setOnClickListener {
+            val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+            val savedLangCode = sharedPreferences.getString("selected_language_code", null)
+            if (savedLangCode != null) {
+                val langIndex = languageCodes.indexOf(savedLangCode)
+                bookViewModel.fetchAndLoadChapters(savedLangCode, languageNames[langIndex], forceDownload = true)
+            }
         }
     }
 
@@ -219,6 +237,13 @@ class MainActivity : AppCompatActivity() {
 
         bookViewModel.isLoading.observe(this) { isLoading ->
             Log.d("MainActivity", "isLoading LiveData updated: $isLoading")
+
+            // Disable/Enable interaction with theme and language buttons
+            themeToggleButton.isEnabled = !isLoading
+            languageChangeButton.isEnabled = !isLoading
+            themeToggleButton.alpha = if (isLoading) 0.5f else 1.0f
+            languageChangeButton.alpha = if (isLoading) 0.5f else 1.0f
+
             if (isLoading) {
                 // The visibility of loadingGroup and animation is controlled here.
                 // Text for tvLoadingStatus will be primarily set by loadingStatusMessage observer.
@@ -242,6 +267,7 @@ class MainActivity : AppCompatActivity() {
                 // tvLoadingStatus.text = ""
             }
         }
+        setupRetryButton()
 
         bookViewModel.loadingStatusMessage.observe(this) { statusMessage ->
             // This observer is now the primary driver for tvLoadingStatus text when loading.
@@ -259,14 +285,15 @@ class MainActivity : AppCompatActivity() {
 
         bookViewModel.error.observe(this) { errorMessage ->
             errorMessage?.let {
-                Log.e("MainActivity", "Error LiveData updated: $it")
-                Toast.makeText(this, it, Toast.LENGTH_LONG).show()
-                // Loading UI is already hidden by isLoading observer when it goes to false
-                // (which should happen on error in ViewModel)
-                if (bookViewModel.chapters.value.isNullOrEmpty()) {
-                    recyclerViewChapters.visibility = View.GONE
-                }
-                bookViewModel.onErrorShown()
+                errorMessageTextView.text = it
+                errorGroup.visibility = View.VISIBLE
+                recyclerViewChapters.visibility = View.GONE
+                loadingGroup.visibility = View.GONE
+                Log.e("MainActivity", "Error observed: $it. Showing error screen.")
+            } ?: run {
+                // This block runs when the error message is null (i.e., cleared).
+                errorGroup.visibility = View.GONE
+                Log.d("MainActivity", "Error cleared. Hiding error screen.")
             }
         }
 

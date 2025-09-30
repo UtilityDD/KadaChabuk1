@@ -12,6 +12,9 @@
 
 
         <string name="no_chapters_found">No chapters found for the selected language.</string>
+    <string name="error_image_description">An illustration indicating an error has occurred.</string>
+    <string name="retry_button_text">Retry</string>
+    <string name="default_error_message">Something went wrong. Please try again.</string>
 
 
     <string-array name="language_names">

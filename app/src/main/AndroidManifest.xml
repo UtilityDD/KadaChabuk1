@@ -16,18 +16,21 @@
         android:theme="@style/Theme.KadaChabuk"
         tools:targetApi="31">
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
+            android:name=".CoverActivity"
+            android:exported="true"
+            android:theme="@style/Theme.KadaChabuk">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" />
 
         <activity
             android:name=".DetailActivity"
             android:label="Chapter Details" /> <!-- You can set a default label or use @string resource -->
-        <!-- <caret> -->
     </application>
 
 </manifest>

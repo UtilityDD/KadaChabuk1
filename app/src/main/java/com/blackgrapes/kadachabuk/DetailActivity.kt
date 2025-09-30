@@ -14,6 +14,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat // <-- IMPORT THIS
+import androidx.core.view.updatePadding
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -56,6 +57,12 @@ class DetailActivity : AppCompatActivity() {
         setContentView(R.layout.activity_detail)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            fontSettingsButton.updatePadding(top = systemBars.top)
+            insets
+        }
 
         scrollView = findViewById(R.id.scrollView)
         imageViewHeader = findViewById(R.id.imageViewHeader) // <-- INITIALIZE ImageView
@@ -211,7 +218,7 @@ class DetailActivity : AppCompatActivity() {
         // to avoid the content jumping under the status bar area.
         val insets = ViewCompat.getRootWindowInsets(window.decorView)
         val systemBarInsets = insets?.getInsets(WindowInsetsCompat.Type.systemBars())
-        scrollView.setPadding(systemBarInsets?.left ?: 0, 0, systemBarInsets?.right ?: 0, systemBarInsets?.bottom ?: 0)
+        scrollView.setPadding(systemBarInsets?.left ?: 0, 0, systemBarInsets?.right ?: 0, 0)
     }
 
     override fun onPause() {

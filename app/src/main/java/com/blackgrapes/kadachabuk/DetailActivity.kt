@@ -25,7 +25,7 @@ import kotlin.random.Random // <-- IMPORT THIS
 
 private const val FONT_PREFS = "FontPrefs"
 private const val KEY_FONT_SIZE = "fontSize"
-private const val DEFAULT_FONT_SIZE = 16f
+private const val DEFAULT_FONT_SIZE = 18f
 private const val SCROLL_PREFS = "ScrollPositions"
 
 class DetailActivity : AppCompatActivity() {

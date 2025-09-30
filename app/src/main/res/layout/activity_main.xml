@@ -19,7 +19,9 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary">
+            app:menu="@menu/main_menu"
+            android:background="?attr/colorPrimary"
+            app:title="">
 
             <ImageView
                 android:layout_width="wrap_content"
@@ -29,29 +31,6 @@
                 app:tint="?attr/colorOnPrimary"
                 android:src="@drawable/loading_icon" 
                 android:contentDescription="@string/app_name" />
-
-            <LinearLayout
-                android:layout_gravity="end"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <ImageButton
-                    android:id="@+id/button_language_change"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_language"
-                    android:contentDescription="@string/change_language_description" />
-
-                <ImageButton
-                    android:id="@+id/button_theme_toggle"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    tools:src="@drawable/ic_light_mode"
-                    android:contentDescription="@string/theme_toggle_description" />
-            </LinearLayout>
 
         </com.google.android.material.appbar.MaterialToolbar>
 

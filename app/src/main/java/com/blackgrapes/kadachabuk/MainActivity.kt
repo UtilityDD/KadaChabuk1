@@ -6,6 +6,8 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.Button
 import android.view.ViewGroup
 import android.view.Window
@@ -16,6 +18,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.appbar.AppBarLayout
 import androidx.constraintlayout.widget.Group
 import androidx.core.view.updatePadding
 import androidx.core.view.ViewCompat
@@ -24,6 +27,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.recyclerview.widget.RecyclerView
 import com.airbnb.lottie.LottieAnimationView
+import com.google.android.material.appbar.MaterialToolbar
 
 
 class MainActivity : AppCompatActivity() {
@@ -33,7 +37,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var chapterAdapter: ChapterAdapter
     private lateinit var recyclerViewChapters: RecyclerView
 
-    private lateinit var themeToggleButton: ImageButton
     private lateinit var loadingGroup: Group
     private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var tvLoadingStatus: TextView
@@ -44,8 +47,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var downloadedHeadingsAdapter: DownloadedChaptersAdapter
 
     private lateinit var languageCodes: Array<String>
-    private lateinit var languageChangeButton: ImageButton
     private lateinit var languageNames: Array<String>
+
+    private var optionsMenu: Menu? = null
 
     // Define a string resource for the default loading message if not already present
     // For example, in res/values/strings.xml:
@@ -59,7 +63,10 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
-        val appBarLayout: com.google.android.material.appbar.AppBarLayout = findViewById(R.id.app_bar_layout)
+        val appBarLayout: AppBarLayout = findViewById(R.id.app_bar_layout)
+        val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.title = ""
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -71,8 +78,6 @@ class MainActivity : AppCompatActivity() {
         initializeViews()
         loadLanguageArrays()
         setupAdaptersAndRecyclerViews()
-        setupLanguageChangeButton()
-        setupThemeToggleButton()
         checkFirstLaunch()
         observeViewModel()
     }
@@ -80,10 +85,8 @@ class MainActivity : AppCompatActivity() {
     private fun initializeViews() {
         recyclerViewChapters = findViewById(R.id.recyclerViewChapters)
         loadingGroup = findViewById(R.id.loading_group)
-        themeToggleButton = findViewById(R.id.button_theme_toggle)
         lottieAnimationView = findViewById(R.id.lottie_animation_view)
         tvLoadingStatus = findViewById(R.id.tv_loading_status)
-        languageChangeButton = findViewById(R.id.button_language_change)
         rvDownloadedChapterHeadings = findViewById(R.id.rv_downloaded_chapter_headings)
         errorGroup = findViewById(R.id.error_group)
         errorMessageTextView = findViewById(R.id.error_message)
@@ -112,12 +115,6 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("MainActivity", "Error setting up DownloadedChaptersAdapter.", e)
             Toast.makeText(this, "Error initializing download progress display.", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun setupLanguageChangeButton() {
-        languageChangeButton.setOnClickListener {
-            showLanguageSelectionDialog(isCancelable = true)
         }
     }
 
@@ -188,31 +185,40 @@ class MainActivity : AppCompatActivity() {
         AppCompatDelegate.setDefaultNightMode(nightMode)
     }
 
-    private fun setupThemeToggleButton() {
-        updateThemeIcon()
-        themeToggleButton.setOnClickListener {
-            val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-            val newNightMode = if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
-                AppCompatDelegate.MODE_NIGHT_NO
-            } else {
-                AppCompatDelegate.MODE_NIGHT_YES
-            }
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        optionsMenu = menu
+        updateThemeIcon(menu.findItem(R.id.action_theme_toggle))
+        return true
+    }
 
-            val sharedPreferences = getSharedPreferences("ThemePrefs", Context.MODE_PRIVATE)
-            with(sharedPreferences.edit()) {
-                putInt("NightMode", newNightMode)
-                apply()
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_language_change -> {
+                showLanguageSelectionDialog(isCancelable = true)
+                true
             }
-            AppCompatDelegate.setDefaultNightMode(newNightMode)
+            R.id.action_theme_toggle -> {
+                val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+                val newNightMode = if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
+                    AppCompatDelegate.MODE_NIGHT_NO
+                } else {
+                    AppCompatDelegate.MODE_NIGHT_YES
+                }
+                AppCompatDelegate.setDefaultNightMode(newNightMode)
+                getSharedPreferences("ThemePrefs", Context.MODE_PRIVATE).edit().putInt("NightMode", newNightMode).apply()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
     }
 
-    private fun updateThemeIcon() {
+    private fun updateThemeIcon(themeMenuItem: MenuItem) {
         val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
-            themeToggleButton.setImageResource(R.drawable.ic_light_mode)
+            themeMenuItem.setIcon(R.drawable.ic_light_mode)
         } else {
-            themeToggleButton.setImageResource(R.drawable.ic_dark_mode)
+            themeMenuItem.setIcon(R.drawable.ic_dark_mode)
         }
     }
 
@@ -237,17 +243,13 @@ class MainActivity : AppCompatActivity() {
 
         bookViewModel.isLoading.observe(this) { isLoading ->
             Log.d("MainActivity", "isLoading LiveData updated: $isLoading")
-
-            // Disable/Enable interaction with theme and language buttons
-            themeToggleButton.isEnabled = !isLoading
-            languageChangeButton.isEnabled = !isLoading
-            themeToggleButton.alpha = if (isLoading) 0.5f else 1.0f
-            languageChangeButton.alpha = if (isLoading) 0.5f else 1.0f
+            optionsMenu?.findItem(R.id.action_theme_toggle)?.isEnabled = !isLoading
+            optionsMenu?.findItem(R.id.action_overflow)?.isEnabled = !isLoading
+            val alpha = if (isLoading) 128 else 255 // 50% transparent when disabled
+            optionsMenu?.findItem(R.id.action_theme_toggle)?.icon?.alpha = alpha
+            optionsMenu?.findItem(R.id.action_overflow)?.icon?.alpha = alpha
 
             if (isLoading) {
-                // The visibility of loadingGroup and animation is controlled here.
-                // Text for tvLoadingStatus will be primarily set by loadingStatusMessage observer.
-                // Set a very basic default if loadingStatusMessage hasn't emitted yet.
                 if (tvLoadingStatus.text.isNullOrEmpty() || bookViewModel.loadingStatusMessage.value.isNullOrEmpty()) {
                     tvLoadingStatus.text = getString(R.string.loading_status_default)
                 }

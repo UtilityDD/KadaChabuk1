@@ -3,10 +3,22 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/action_search"
-        android:icon="@drawable/ic_search"
-        android:title="Search"
-        app:actionViewClass="androidx.appcompat.widget.SearchView"
-        app:showAsAction="ifRoom|collapseActionView" />
+        android:id="@+id/action_theme_toggle"
+        android:icon="@drawable/ic_dark_mode"
+        android:title="@string/theme_toggle_description"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_overflow"
+        android:icon="@drawable/ic_more_vert"
+        android:title="More"
+        app:showAsAction="always">
+        <menu>
+            <item
+                android:id="@+id/action_language_change"
+                android:title="@string/change_language_description"
+                app:showAsAction="never" />
+        </menu>
+    </item>
 
 </menu>

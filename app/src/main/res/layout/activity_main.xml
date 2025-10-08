@@ -24,9 +24,11 @@
             app:title="">
 
             <ImageView
+                android:id="@+id/toolbar_icon"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
-                android:layout_gravity="center"
+                android:layout_gravity="start|center_vertical"
+                android:layout_marginStart="16dp"
                 android:adjustViewBounds="true"
                 app:tint="?attr/colorOnPrimary"
                 android:src="@drawable/loading_icon" 

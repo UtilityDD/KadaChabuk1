@@ -3,11 +3,11 @@
     <!-- Animator for the entering activity (the main content) -->
     <objectAnimator
         android:valueFrom="90"
-        android_valueTo="0"
+        android:valueTo="0"
         android:propertyName="rotationY"
         android:interpolator="@android:interpolator/accelerate_decelerate"
-        android:duration="500" />
+        android:duration="800" />
 
     <!-- Fade in the main content as it flips -->
-    <objectAnimator android:valueFrom="0.0" android:valueTo="1.0" android:propertyName="alpha" android:duration="500" />
+    <objectAnimator android:valueFrom="0.0" android:valueTo="1.0" android:propertyName="alpha" android:duration="800" />
 </set>

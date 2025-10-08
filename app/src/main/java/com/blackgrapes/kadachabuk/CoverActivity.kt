@@ -1,5 +1,6 @@
 package com.blackgrapes.kadachabuk
 
+import android.animation.Animator
 import android.animation.ObjectAnimator
 import android.animation.AnimatorSet
 import android.content.Context
@@ -19,6 +20,7 @@ class CoverActivity : AppCompatActivity() {
 
     private val bookViewModel: BookViewModel by viewModels()
     private lateinit var coverLayout: View
+    private lateinit var spineShadow: View
     private var peekingAnimatorSet: AnimatorSet? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +34,7 @@ class CoverActivity : AppCompatActivity() {
         controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         coverLayout = findViewById(R.id.cover_layout)
+        spineShadow = findViewById(R.id.spine_shadow)
 
         // Pre-load chapters in the background
         preloadChapters()
@@ -59,8 +62,17 @@ class CoverActivity : AppCompatActivity() {
             repeatMode = ObjectAnimator.REVERSE // Animate back and forth (0 -> -2.5 -> 0 -> ...)
         }
 
+        // Animate the shadow's alpha to make it more prominent as the cover lifts
+        val shadowAnimator = ObjectAnimator.ofFloat(spineShadow, "alpha", 1.0f, 0.6f).apply {
+            duration = 2500
+            interpolator = AccelerateDecelerateInterpolator()
+            repeatCount = ObjectAnimator.INFINITE
+            repeatMode = ObjectAnimator.REVERSE
+        }
+
         peekingAnimatorSet = AnimatorSet().apply {
-            play(rotationAnimator)
+            // Play both animations together
+            playTogether(rotationAnimator, shadowAnimator)
             startDelay = 1000 // Wait a second before starting
         }
         peekingAnimatorSet?.start()
@@ -68,13 +80,23 @@ class CoverActivity : AppCompatActivity() {
 
     private fun navigateToMain() {
         // Stop the animation when we navigate away
+        coverLayout.setOnClickListener(null) // Prevent double taps
+
+        // 1. Cancel the ongoing peeking animation.
         peekingAnimatorSet?.cancel()
 
+        // 2. Clear the animation from the views and reset their properties.
+        //    This is the crucial step to prevent animation conflicts.
+        coverLayout.clearAnimation()
+        spineShadow.clearAnimation()
+        coverLayout.rotationY = 0f
+        spineShadow.alpha = 1.0f
+
+        // 3. Now it's safe to start the new activity and its transition.
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
-        // Use our new 3D flip animation!
         overridePendingTransition(R.animator.flip_in_from_middle, R.animator.flip_out_to_middle)
-        finish() // Finish CoverActivity so the user can't navigate back to it
+        finish()
     }
 
     override fun onDestroy() {

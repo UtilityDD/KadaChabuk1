@@ -5,6 +5,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.animation.AnimationUtils
+import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -16,6 +18,7 @@ class CoverActivity : AppCompatActivity() {
 
     private val bookViewModel: BookViewModel by viewModels()
     private lateinit var coverLayout: View
+    private lateinit var tapToOpenText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +31,11 @@ class CoverActivity : AppCompatActivity() {
         controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         coverLayout = findViewById(R.id.cover_layout)
+        tapToOpenText = findViewById(R.id.textView)
+
+        // Animate the "tap to open" text
+        val fadeInOut = AnimationUtils.loadAnimation(this, R.anim.fade_in_out)
+        tapToOpenText.startAnimation(fadeInOut)
 
         // Pre-load chapters in the background
         preloadChapters()

@@ -3,6 +3,7 @@
     <string name="select_language_prompt">Select Language</string>
     <string name="chapter_header_image_description">Chapter header image</string>
     <string name="loading_status_default">Loading Kada Chabuks...</string>
+    <string name="loading_status_downloading">Downloading %s</string>
 
     <!-- New strings for CSV/language errors -->
     <string name="error_csv_not_found">Chapter data not available for language: %s</string>

@@ -307,6 +307,7 @@ class MainActivity : AppCompatActivity() {
                 downloadedHeadingsAdapter.updateList(downloadingList)
                 if (downloadingList.isNotEmpty()) {
                     rvDownloadedChapterHeadings.smoothScrollToPosition(downloadedHeadingsAdapter.itemCount - 1)
+                    tvLoadingStatus.text = "Downloading ${downloadingList.last().heading}"
                 }
             }
         }

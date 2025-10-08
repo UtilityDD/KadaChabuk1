@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 
 // Import your data model for downloaded chapters, e.g.:
@@ -11,7 +12,6 @@ import androidx.recyclerview.widget.RecyclerView
 
 // Replace 'ChapterDownloadStatus' with the actual data class you'll use
 // to represent the items in this list (e.g., just a String for the heading, or a more complex object).
-data class ChapterDownloadStatus(val heading: String, val isDownloaded: Boolean = false) // Example data class
 
 class DownloadedChaptersAdapter(
     private val items: MutableList<ChapterDownloadStatus> // Use your specific data type
@@ -20,6 +20,7 @@ class DownloadedChaptersAdapter(
     // Example ViewHolder - customize this based on your item_downloaded_chapter_heading.xml
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val headingTextView: TextView = itemView.findViewById(R.id.tv_downloaded_chapter_title) // Example ID
+        val statusIcon: View = itemView.findViewById(R.id.iv_chapter_download_status_icon)
         // Add other views from your item layout here
     }
 
@@ -34,6 +35,7 @@ class DownloadedChaptersAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = items[position]
         holder.headingTextView.text = item.heading
+        holder.statusIcon.isVisible = item.isDownloaded
         // Bind other data to your views here
     }
 

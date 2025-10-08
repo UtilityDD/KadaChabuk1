@@ -35,6 +35,7 @@ class DetailActivity : AppCompatActivity() {
     private var isFullScreen = false
     private lateinit var textViewData: TextView
     private lateinit var fontSettingsButton: ImageButton
+    private lateinit var backButton: ImageButton
     private lateinit var chapterSerial: String
     private lateinit var languageCode: String
 
@@ -61,6 +62,7 @@ class DetailActivity : AppCompatActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             fontSettingsButton.updatePadding(top = systemBars.top)
+            backButton.updatePadding(top = systemBars.top)
             insets
         }
 
@@ -72,6 +74,7 @@ class DetailActivity : AppCompatActivity() {
         val textViewWriter: TextView = findViewById(R.id.textViewWriter)
         textViewData = findViewById(R.id.textViewData)
         fontSettingsButton = findViewById(R.id.button_font_settings)
+        backButton = findViewById(R.id.button_back)
 
         val heading = intent.getStringExtra("EXTRA_HEADING")
         val date = intent.getStringExtra("EXTRA_DATE")
@@ -88,6 +91,10 @@ class DetailActivity : AppCompatActivity() {
         loadAndApplyFontSize()
         textViewWriter.text = writer
         setupFontSettingsButton()
+
+        backButton.setOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
+        }
 
         // Check for a saved scroll position and prompt the user
         checkForSavedScrollPosition()

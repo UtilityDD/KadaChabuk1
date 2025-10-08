@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
-    android:duration="500"
-    android:interpolator="@android:anim/accelerate_interpolator"
-    android:propertyName="rotationY"
-    android:valueFrom="0"
-    android:valueTo="-90" />
+<set xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Animator for the exiting activity (the cover) -->
+    <objectAnimator
+        android:valueFrom="0"
+        android:valueTo="-90"
+        android:propertyName="rotationY"
+        android:interpolator="@android:interpolator/accelerate_decelerate"
+        android:duration="500" />
+
+    <!-- Fade out the cover as it flips -->
+    <objectAnimator android:valueFrom="1.0" android:valueTo="0.0" android:propertyName="alpha" android:duration="500" />
+</set>

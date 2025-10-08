@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
         initializeViews()
         loadLanguageArrays()
         setupAdaptersAndRecyclerViews()
-        checkFirstLaunch()
+        checkIfLanguageNotSet()
         observeViewModel()
     }
 
@@ -129,20 +129,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun checkFirstLaunch() {
+    private fun checkIfLanguageNotSet() {
         val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
         val savedLangCode = sharedPreferences.getString("selected_language_code", null)
 
         if (savedLangCode == null) {
+            // If no language is set, show the selection dialog.
+            // This will only happen on the very first app launch.
             showLanguageSelectionDialog(isCancelable = false)
-        } else {
-            val savedLangIndex = languageCodes.indexOf(savedLangCode)
-            if (savedLangIndex != -1) {
-                bookViewModel.fetchAndLoadChapters(savedLangCode, languageNames[savedLangIndex], forceDownload = false)
-            } else {
-                // Fallback if saved language is no longer supported
-                showLanguageSelectionDialog(isCancelable = false)
-            }
+        } else if (bookViewModel.chapters.value.isNullOrEmpty() && bookViewModel.isLoading.value != true) {
+            // This is a crucial check. If MainActivity starts and finds:
+            // 1. There are no chapters displayed.
+            // 2. A loading process is NOT already running (started by CoverActivity).
+            // This means pre-loading didn't happen or failed. We must trigger the load now.
+            bookViewModel.fetchAndLoadChapters(savedLangCode, languageNames[languageCodes.indexOf(savedLangCode)], forceDownload = false)
         }
     }
 
@@ -265,6 +265,11 @@ class MainActivity : AppCompatActivity() {
                     lottieAnimationView.cancelAnimation()
                 }
                 rvDownloadedChapterHeadings.visibility = View.GONE // Hide progress list
+                // When loading is finished, ensure the main content or error is visible.
+                if (bookViewModel.error.value == null) {
+                    // If there's no error, the chapters list should be visible (even if empty).
+                    recyclerViewChapters.visibility = View.VISIBLE
+                }
                 // Optionally clear tvLoadingStatus or set to an idle message if desired
                 // tvLoadingStatus.text = ""
             }

@@ -16,6 +16,7 @@
     <color name="light_onSurface">#212121</color> <!-- Dark gray text -->
     <color name="light_surfaceContainer">#F5F1E9</color> <!-- Slightly different for cards -->
     <color name="light_onSurfaceVariant">#757575</color> <!-- Lighter gray for secondary text -->
+    <color name="selectedLineColor">#80DEEA</color>
 
     <!-- Dark Theme Palette -->
     <color name="dark_primary">#4CDADA</color>

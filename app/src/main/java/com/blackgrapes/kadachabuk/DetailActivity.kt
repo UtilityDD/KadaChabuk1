@@ -7,14 +7,22 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
+import android.view.inputmethod.InputMethodManager
 import android.view.WindowInsetsController
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.ImageButton
 import android.widget.ImageView // <-- IMPORT THIS
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat // <-- IMPORT THIS
+import androidx.core.app.ShareCompat
+import android.widget.Toast
+import android.util.Log
+
 import androidx.core.view.updatePadding
+import androidx.core.text.HtmlCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -56,6 +64,8 @@ class DetailActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detail)
+        // Enable the action bar menu
+        setHasOptionsMenu(true)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -92,6 +102,26 @@ class DetailActivity : AppCompatActivity() {
         textViewWriter.text = writer
         setupFontSettingsButton()
 
+        // Request focus for the TextView
+        textViewData.requestFocus()
+
+        // Enable text selection
+        textViewData.setTextIsSelectable(true)
+
+        // Set long click listener for sharing selected text
+        textViewData.setOnLongClickListener {
+            if (textViewData.hasSelection()) {
+                shareSelectedText()
+                return@setOnLongClickListener true
+            }
+            false
+        }
+
+//        textViewData.setOnLongClickListener {
+//            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(textViewData, InputMethodManager.SHOW_IMPLICIT)
+//            true // Return true to indicate that the long click is handled
+//        }
+        
         backButton.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
@@ -231,5 +261,59 @@ class DetailActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         saveScrollPosition()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.detail_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_share -> {
+                shareText()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun setHasOptionsMenu(b: Boolean) {
+
+    }
+
+    private fun shareText() {
+            val textToShare = textViewData.text.toString()
+
+        if (textToShare.isNotEmpty()) {
+            try {
+
+
+                ShareCompat.IntentBuilder(this)
+                    .setType("text/plain")
+                    .setText(textToShare)
+                    .setChooserTitle("Share via")
+                    .`startChooser`()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Sharing failed", Toast.LENGTH_SHORT).show()
+                Log.e("ShareError", "Error sharing text", e)
+            }
+        } else {
+            Toast.makeText(this, "No text to share", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun shareSelectedText() {
+        val startIndex = textViewData.selectionStart
+        val endIndex = textViewData.selectionEnd
+
+        if (startIndex != endIndex) {
+            val selectedText = textViewData.text.substring(startIndex, endIndex)
+            ShareCompat.IntentBuilder(this)
+                .setType("text/plain")
+                .setText(selectedText)
+                .setChooserTitle("Share selected text via")
+                .startChooser()
+        }
     }
 }

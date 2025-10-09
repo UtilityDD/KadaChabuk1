@@ -13,6 +13,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.ImageButton
 import android.widget.ImageView // <-- IMPORT THIS
+import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -51,6 +52,12 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var bookmarkButton: ImageButton
     private lateinit var chapterSerial: String
     private lateinit var languageCode: String
+    private lateinit var searchNavigationLayout: LinearLayout
+    private lateinit var previousMatchButton: ImageButton
+    private lateinit var nextMatchButton: ImageButton
+
+    private val matchIndices = mutableListOf<Int>()
+    private var currentMatchIndex = -1
 
     // Array of your drawable resource IDs
     private val headerImageDrawables = intArrayOf(
@@ -92,6 +99,10 @@ class DetailActivity : AppCompatActivity() {
         fontSettingsButton = findViewById(R.id.button_font_settings)
         backButton = findViewById(R.id.button_back)
         bookmarkButton = findViewById(R.id.button_bookmark)
+        searchNavigationLayout = findViewById(R.id.search_navigation_layout)
+        previousMatchButton = findViewById(R.id.button_previous_match)
+        nextMatchButton = findViewById(R.id.button_next_match)
+
 
         val heading = intent.getStringExtra("EXTRA_HEADING")
         val date = intent.getStringExtra("EXTRA_DATE")
@@ -109,6 +120,7 @@ class DetailActivity : AppCompatActivity() {
         textViewWriter.text = writer
         setupFontSettingsButton()
         setupBookmarkButton()
+        setupSearchNavigation()
 
         // Request focus for the TextView
         textViewData.requestFocus()
@@ -251,32 +263,63 @@ class DetailActivity : AppCompatActivity() {
         val spannableString = SpannableString(fullText)
         val highlightColor = ContextCompat.getColor(this, R.color.highlight_color) // Make sure to define this color
 
-        var firstMatchIndex = -1
+        matchIndices.clear()
         var index = fullText.indexOf(searchQuery, 0, ignoreCase = true)
         while (index >= 0) {
-            if (firstMatchIndex == -1) {
-                firstMatchIndex = index
-            }
+            matchIndices.add(index)
             val span = BackgroundColorSpan(highlightColor)
             spannableString.setSpan(span, index, index + searchQuery.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             index = fullText.indexOf(searchQuery, index + searchQuery.length, ignoreCase = true)
         }
 
         textViewData.text = spannableString
+        
+        if (matchIndices.isNotEmpty()) {
+            currentMatchIndex = 0
+            scrollToMatch(currentMatchIndex)
+            searchNavigationLayout.visibility = View.VISIBLE
+        } else {
+            searchNavigationLayout.visibility = View.GONE
+        }
+    }
 
-        // Scroll to the first occurrence
-        if (firstMatchIndex != -1) {
-            scrollView.post {
-                val layout = textViewData.layout
-                if (layout != null) {
-                    val line = layout.getLineForOffset(firstMatchIndex)
-                    val y = layout.getLineTop(line)
-                    scrollView.smoothScrollTo(0, y)
+    private fun setupSearchNavigation() {
+        previousMatchButton.setOnClickListener {
+            if (matchIndices.isNotEmpty()) {
+                currentMatchIndex--
+                if (currentMatchIndex < 0) {
+                    currentMatchIndex = matchIndices.size - 1 // Loop to the end
                 }
+                scrollToMatch(currentMatchIndex)
+            }
+        }
+
+        nextMatchButton.setOnClickListener {
+            if (matchIndices.isNotEmpty()) {
+                currentMatchIndex++
+                if (currentMatchIndex >= matchIndices.size) {
+                    currentMatchIndex = 0 // Loop to the beginning
+                }
+                scrollToMatch(currentMatchIndex)
             }
         }
     }
 
+    private fun scrollToMatch(matchIndex: Int) {
+        if (matchIndex < 0 || matchIndex >= matchIndices.size) return
+
+        val charIndex = matchIndices[matchIndex]
+        scrollView.post {
+            val layout = textViewData.layout
+            if (layout != null) {
+                val line = layout.getLineForOffset(charIndex)
+                // Calculate y position to scroll to, with some offset to not be at the very top
+                val y = layout.getLineTop(line) - (scrollView.height / 4)
+                scrollView.smoothScrollTo(0, y.coerceAtLeast(0))
+            }
+        }
+    }
+    
     private fun setupFontSettingsButton() {
         fontSettingsButton.setOnClickListener {
             showFontSettingsDialog()

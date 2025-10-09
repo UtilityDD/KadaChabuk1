@@ -32,6 +32,7 @@ import androidx.core.app.ShareCompat
 import com.airbnb.lottie.LottieAnimationView
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -273,55 +274,71 @@ class MainActivity : AppCompatActivity() {
 
     private fun filter(text: String?) {
         val query = text?.lowercase()?.trim()
-    
-        // If the search query is empty, restore the original adapter and hide search UI.
-        if (query.isNullOrEmpty()) {
-            recyclerViewChapters.adapter = chapterAdapter
-            chapterAdapter.updateChapters(originalChapters) // Make sure the original list is shown
-            noResultsTextView.visibility = View.GONE
-            searchSummaryTextView.visibility = View.GONE
-            return
-        }
-    
-        // Switch to the search adapter
-        if (recyclerViewChapters.adapter !is SearchResultAdapter) {
-            recyclerViewChapters.adapter = searchResultAdapter
-        }
-    
-        val searchResults = mutableListOf<SearchResult>()
-        var totalOccurrences = 0
-    
-        originalChapters.forEach { chapter ->
-            val headingMatches = chapter.heading.lowercase().windowed(query.length).count { it == query }
-            val serialMatches = chapter.serial.lowercase().windowed(query.length).count { it == query }
-            val writerMatches = chapter.writer.lowercase().windowed(query.length).count { it == query }
-            val dataMatches = chapter.dataText.lowercase().windowed(query.length).count { it == query }
-    
-            val totalMatchesInChapter = headingMatches + serialMatches + writerMatches + dataMatches
-    
-            if (totalMatchesInChapter > 0) {
-                searchResults.add(SearchResult(chapter, totalMatchesInChapter))
-                totalOccurrences += totalMatchesInChapter
+
+        uiScope.launch {
+            // If the search query is empty, restore the original adapter and hide search UI.
+            if (query.isNullOrEmpty()) {
+                recyclerViewChapters.adapter = chapterAdapter
+                chapterAdapter.updateChapters(originalChapters) // Make sure the original list is shown
+                noResultsTextView.visibility = View.GONE
+                searchSummaryTextView.visibility = View.GONE
+                return@launch
+            }
+
+            // Perform the heavy filtering and counting on a background thread.
+            val (searchResults, totalOccurrences) = withContext(Dispatchers.IO) {
+                val results = mutableListOf<SearchResult>()
+                var occurrences = 0
+
+                originalChapters.forEach { chapter ->
+                    val totalMatchesInChapter = countOccurrences(chapter.heading, query) +
+                            countOccurrences(chapter.serial, query) +
+                            countOccurrences(chapter.writer, query) +
+                            countOccurrences(chapter.dataText, query)
+
+                    if (totalMatchesInChapter > 0) {
+                        results.add(SearchResult(chapter, totalMatchesInChapter))
+                        occurrences += totalMatchesInChapter
+                    }
+                }
+                Pair(results, occurrences)
+            }
+
+            // Switch to the search adapter on the main thread
+            if (recyclerViewChapters.adapter !is SearchResultAdapter) {
+                recyclerViewChapters.adapter = searchResultAdapter
+            }
+
+            // When filtering, exit the "bookmarks only" view for a better user experience.
+            if (isShowingBookmarks) {
+                isShowingBookmarks = false
+                fabBookmarks.setImageResource(R.drawable.ic_bookmark_border)
+            }
+
+            searchResultAdapter.updateResults(searchResults, query)
+
+            if (searchResults.isEmpty()) {
+                searchSummaryTextView.visibility = View.GONE
+                noResultsTextView.visibility = View.VISIBLE
+            } else {
+                val summary = "\"$text\" found in ${searchResults.size} chapters, $totalOccurrences times total."
+                searchSummaryTextView.text = summary
+                searchSummaryTextView.visibility = View.VISIBLE
+                noResultsTextView.visibility = View.GONE
             }
         }
-    
-        // When filtering, exit the "bookmarks only" view for a better user experience.
-        if (isShowingBookmarks) {
-            isShowingBookmarks = false
-            fabBookmarks.setImageResource(R.drawable.ic_bookmark_border)
+    }
+
+    // A more performant way to count occurrences, ignoring case.
+    private fun countOccurrences(text: String, query: String): Int {
+        if (query.isEmpty()) return 0
+        var count = 0
+        var index = text.indexOf(query, 0, ignoreCase = true)
+        while (index != -1) {
+            count++
+            index = text.indexOf(query, index + query.length, ignoreCase = true)
         }
-    
-        searchResultAdapter.updateResults(searchResults)
-    
-        if (searchResults.isEmpty()) {
-            searchSummaryTextView.visibility = View.GONE
-            noResultsTextView.visibility = View.VISIBLE
-        } else {
-            val summary = "\"$text\" found in ${searchResults.size} chapters, ${totalOccurrences} times total."
-            searchSummaryTextView.text = summary
-            searchSummaryTextView.visibility = View.VISIBLE
-            noResultsTextView.visibility = View.GONE
-        }
+        return count
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

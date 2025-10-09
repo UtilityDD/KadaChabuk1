@@ -12,6 +12,8 @@ data class SearchResult(val chapter: Chapter, val matchCount: Int)
 class SearchResultAdapter(private var searchResults: List<SearchResult>) :
     RecyclerView.Adapter<SearchResultAdapter.SearchResultViewHolder>() {
 
+    private var currentQuery: String = ""
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SearchResultViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_search_result_card, parent, false)
@@ -20,14 +22,15 @@ class SearchResultAdapter(private var searchResults: List<SearchResult>) :
 
     override fun onBindViewHolder(holder: SearchResultViewHolder, position: Int) {
         val searchResult = searchResults[position]
-        holder.bind(searchResult)
+        holder.bind(searchResult, currentQuery)
     }
 
     override fun getItemCount(): Int = searchResults.size
 
-    fun updateResults(newResults: List<SearchResult>) {
+    fun updateResults(newResults: List<SearchResult>, query: String) {
         searchResults = newResults
-        notifyDataSetChanged()
+        this.currentQuery = query
+        notifyDataSetChanged() // Consider using DiffUtil for better performance
     }
 
     class SearchResultViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -35,7 +38,7 @@ class SearchResultAdapter(private var searchResults: List<SearchResult>) :
         private val serialTextView: TextView = itemView.findViewById(R.id.textViewSerial)
         private val dateTextView: TextView = itemView.findViewById(R.id.textViewDate)
 
-        fun bind(searchResult: SearchResult) {
+        fun bind(searchResult: SearchResult, query: String?) {
             val chapter = searchResult.chapter
             headingTextView.text = chapter.heading
             serialTextView.text = chapter.serial
@@ -50,6 +53,7 @@ class SearchResultAdapter(private var searchResults: List<SearchResult>) :
                     putExtra("EXTRA_WRITER", chapter.writer)
                     putExtra("EXTRA_SERIAL", chapter.serial)
                     putExtra("EXTRA_LANGUAGE_CODE", chapter.languageCode)
+                    putExtra("EXTRA_SEARCH_QUERY", query) // Pass the search query
                 }
                 context.startActivity(intent)
             }

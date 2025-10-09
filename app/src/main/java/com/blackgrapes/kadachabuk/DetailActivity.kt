@@ -16,6 +16,9 @@ import android.widget.ImageView // <-- IMPORT THIS
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.BackgroundColorSpan
 import androidx.core.content.ContextCompat // <-- IMPORT THIS
 import androidx.core.app.ShareCompat
 import android.widget.Toast
@@ -140,6 +143,10 @@ class DetailActivity : AppCompatActivity() {
         // Set a random header image
         setRandomHeaderImage()
     }
+    override fun onResume() {
+        super.onResume()
+        highlightSearchTerm()
+    }
 
     private fun setupBookmarkButton() {
         checkAndSetBookmarkState()
@@ -231,6 +238,42 @@ class DetailActivity : AppCompatActivity() {
         } else {
             // Optional: Hide ImageView or set a default placeholder if no images are available
             imageViewHeader.visibility = View.GONE
+        }
+    }
+
+    private fun highlightSearchTerm() {
+        val searchQuery = intent.getStringExtra("EXTRA_SEARCH_QUERY")
+        if (searchQuery.isNullOrEmpty()) {
+            return // No query to highlight
+        }
+
+        val fullText = textViewData.text.toString()
+        val spannableString = SpannableString(fullText)
+        val highlightColor = ContextCompat.getColor(this, R.color.highlight_color) // Make sure to define this color
+
+        var firstMatchIndex = -1
+        var index = fullText.indexOf(searchQuery, 0, ignoreCase = true)
+        while (index >= 0) {
+            if (firstMatchIndex == -1) {
+                firstMatchIndex = index
+            }
+            val span = BackgroundColorSpan(highlightColor)
+            spannableString.setSpan(span, index, index + searchQuery.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            index = fullText.indexOf(searchQuery, index + searchQuery.length, ignoreCase = true)
+        }
+
+        textViewData.text = spannableString
+
+        // Scroll to the first occurrence
+        if (firstMatchIndex != -1) {
+            scrollView.post {
+                val layout = textViewData.layout
+                if (layout != null) {
+                    val line = layout.getLineForOffset(firstMatchIndex)
+                    val y = layout.getLineTop(line)
+                    scrollView.smoothScrollTo(0, y)
+                }
+            }
         }
     }
 

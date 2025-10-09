@@ -46,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rvDownloadedChapterHeadings: RecyclerView
     private lateinit var errorGroup: Group
     private lateinit var errorMessageTextView: TextView
+    private lateinit var noResultsTextView: TextView
     private var originalChapters: List<Chapter> = emptyList()
     private lateinit var retryButton: Button
     private lateinit var downloadedHeadingsAdapter: DownloadedChaptersAdapter
@@ -95,6 +96,7 @@ class MainActivity : AppCompatActivity() {
         rvDownloadedChapterHeadings = findViewById(R.id.rv_downloaded_chapter_headings)
         errorGroup = findViewById(R.id.error_group)
         errorMessageTextView = findViewById(R.id.error_message)
+        noResultsTextView = findViewById(R.id.tv_no_results)
         retryButton = findViewById(R.id.retry_button)
         fabBookmarks = findViewById(R.id.fab_bookmarks)
         lottieAnimationView.loop(true)
@@ -163,7 +165,7 @@ class MainActivity : AppCompatActivity() {
         chapterAdapter.updateChapters(bookmarkedChapters)
 
         if (bookmarkedChapters.isEmpty()) {
-            Toast.makeText(this, "No bookmarked chapters found.", Toast.LENGTH_SHORT).show()
+            noResultsTextView.visibility = View.VISIBLE
         }
     }
 
@@ -243,23 +245,36 @@ class MainActivity : AppCompatActivity() {
         updateThemeIcon(menu.findItem(R.id.action_theme_toggle))
         return true
     }
-    private fun filter(text: String?) {
-        val filteredList: ArrayList<Chapter> = ArrayList()
 
-        for (item in originalChapters) {
-            if (item.heading.lowercase().contains(text?.lowercase().orEmpty())) {
-                filteredList.add(item)
-            }
+    private fun filter(text: String?) {
+        val query = text?.lowercase()?.trim()
+
+        // If the search query is empty, show the original list.
+        if (query.isNullOrEmpty()) {
+            chapterAdapter.updateChapters(originalChapters)
+            noResultsTextView.visibility = View.GONE
+            return
         }
+
+        // Filter the original list based on multiple fields.
+        val filteredList = originalChapters.filter { chapter ->
+            chapter.heading.lowercase().contains(query) ||
+                    chapter.serial.lowercase().contains(query) ||
+                    chapter.writer.lowercase().contains(query)
+        }
+
+        // When filtering, exit the "bookmarks only" view for a better user experience.
+        if (isShowingBookmarks) {
+            isShowingBookmarks = false
+            fabBookmarks.setImageResource(R.drawable.ic_bookmark_border)
+        }
+
+        chapterAdapter.updateChapters(filteredList)
+
         if (filteredList.isEmpty()) {
+            noResultsTextView.visibility = View.VISIBLE
         } else {
-            // When filtering, if we are in the "bookmarks only" view, we should filter from that list.
-            // However, for simplicity and better user experience, we will exit the bookmark-only view.
-            if (isShowingBookmarks) {
-                isShowingBookmarks = false
-                fabBookmarks.setImageResource(R.drawable.ic_bookmarks)
-            }
-            chapterAdapter.updateChapters(filteredList)
+            noResultsTextView.visibility = View.GONE
         }
     }
 
@@ -327,6 +342,7 @@ class MainActivity : AppCompatActivity() {
                     // This prevents the UI from "jumping" if the user switches to a language with no content.
                     chapterAdapter.updateChapters(emptyList())
                     // recyclerViewChapters.visibility = View.GONE
+                    noResultsTextView.visibility = View.VISIBLE
                     originalChapters = emptyList()
                 }
             }
@@ -352,12 +368,14 @@ class MainActivity : AppCompatActivity() {
                 }
                 rvDownloadedChapterHeadings.visibility = View.VISIBLE // Show progress list
                 recyclerViewChapters.visibility = View.GONE
+                noResultsTextView.visibility = View.GONE
             } else {
                 loadingGroup.visibility = View.GONE
                 if (lottieAnimationView.isAnimating) {
                     lottieAnimationView.cancelAnimation()
                 }
                 rvDownloadedChapterHeadings.visibility = View.GONE // Hide progress list
+                noResultsTextView.visibility = if (chapterAdapter.itemCount == 0) View.VISIBLE else View.GONE
                 // When loading is finished, ensure the main content or error is visible.
                 if (bookViewModel.error.value == null) {
                     // If there's no error, the chapters list should be visible (even if empty).
@@ -388,11 +406,13 @@ class MainActivity : AppCompatActivity() {
                 errorMessageTextView.text = it
                 errorGroup.visibility = View.VISIBLE
                 recyclerViewChapters.visibility = View.GONE
+                noResultsTextView.visibility = View.GONE
                 loadingGroup.visibility = View.GONE
                 Log.e("MainActivity", "Error observed: $it. Showing error screen.")
             } ?: run {
                 // This block runs when the error message is null (i.e., cleared).
                 errorGroup.visibility = View.GONE
+                noResultsTextView.visibility = if (chapterAdapter.itemCount == 0) View.VISIBLE else View.GONE
                 Log.d("MainActivity", "Error cleared. Hiding error screen.")
             }
         }

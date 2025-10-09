@@ -107,7 +107,7 @@
         android:layout_marginTop="16dp"
         android:background="@drawable/scrim_background_button"
         android:contentDescription="Back"
-        android:src="@drawable/ic_arrow_back_black_24"
+        android:src="@drawable/ic_arrow_back"
         app:tint="@android:color/white"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />

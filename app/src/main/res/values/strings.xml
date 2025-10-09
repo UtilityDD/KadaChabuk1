@@ -35,4 +35,5 @@
         <item>od</item>
         <item>tm</item>
     </string-array>
+    <string name="search_title">Search</string>
 </resources>

@@ -25,6 +25,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.SimpleItemAnimator
+import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.RecyclerView
 import androidx.core.app.ShareCompat
 import com.airbnb.lottie.LottieAnimationView
@@ -44,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rvDownloadedChapterHeadings: RecyclerView
     private lateinit var errorGroup: Group
     private lateinit var errorMessageTextView: TextView
+    private var originalChapters: List<Chapter> = emptyList()
     private lateinit var retryButton: Button
     private lateinit var downloadedHeadingsAdapter: DownloadedChaptersAdapter
 
@@ -187,8 +189,35 @@ class MainActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
         optionsMenu = menu
+        val searchItem = menu.findItem(R.id.action_search)
+        val searchView = searchItem.actionView as SearchView
+
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                filter(newText)
+                return true
+            }
+        })
+
         updateThemeIcon(menu.findItem(R.id.action_theme_toggle))
         return true
+    }
+    private fun filter(text: String?) {
+        val filteredList: ArrayList<Chapter> = ArrayList()
+
+        for (item in originalChapters) {
+            if (item.heading.lowercase().contains(text?.lowercase().orEmpty())) {
+                filteredList.add(item)
+            }
+        }
+        if (filteredList.isEmpty()) {
+        } else {
+            chapterAdapter.updateChapters(filteredList)
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -260,10 +289,12 @@ class MainActivity : AppCompatActivity() {
 
         bookViewModel.isLoading.observe(this) { isLoading ->
             Log.d("MainActivity", "isLoading LiveData updated: $isLoading")
+            optionsMenu?.findItem(R.id.action_search)?.isEnabled = !isLoading
             optionsMenu?.findItem(R.id.action_theme_toggle)?.isEnabled = !isLoading
             optionsMenu?.findItem(R.id.action_overflow)?.isEnabled = !isLoading
             val alpha = if (isLoading) 128 else 255 // 50% transparent when disabled
             optionsMenu?.findItem(R.id.action_theme_toggle)?.icon?.alpha = alpha
+            // The search icon is part of the SearchView, so we can't just set its icon alpha. Disabling the item is sufficient.
             optionsMenu?.findItem(R.id.action_overflow)?.icon?.alpha = alpha
 
             if (isLoading) {

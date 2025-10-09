@@ -31,6 +31,10 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.app.ShareCompat
 import com.airbnb.lottie.LottieAnimationView
 import com.google.android.material.appbar.MaterialToolbar
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 
 class MainActivity : AppCompatActivity() {
@@ -38,12 +42,14 @@ class MainActivity : AppCompatActivity() {
     private val bookViewModel: BookViewModel by viewModels()
 
     private lateinit var chapterAdapter: ChapterAdapter
+    private lateinit var searchResultAdapter: SearchResultAdapter
     private lateinit var recyclerViewChapters: RecyclerView
 
     private lateinit var loadingGroup: Group
     private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var tvLoadingStatus: TextView
     private lateinit var rvDownloadedChapterHeadings: RecyclerView
+    private lateinit var searchSummaryTextView: TextView
     private lateinit var errorGroup: Group
     private lateinit var errorMessageTextView: TextView
     private lateinit var noResultsTextView: TextView
@@ -57,6 +63,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var languageNames: Array<String>
 
     private var optionsMenu: Menu? = null
+
+    private var searchJob: Job? = null
+    private val uiScope = CoroutineScope(Dispatchers.Main)
 
     // Define a string resource for the default loading message if not already present
     // For example, in res/values/strings.xml:
@@ -96,6 +105,7 @@ class MainActivity : AppCompatActivity() {
         rvDownloadedChapterHeadings = findViewById(R.id.rv_downloaded_chapter_headings)
         errorGroup = findViewById(R.id.error_group)
         errorMessageTextView = findViewById(R.id.error_message)
+        searchSummaryTextView = findViewById(R.id.tv_search_summary)
         noResultsTextView = findViewById(R.id.tv_no_results)
         retryButton = findViewById(R.id.retry_button)
         fabBookmarks = findViewById(R.id.fab_bookmarks)
@@ -109,6 +119,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupAdaptersAndRecyclerViews() {
         chapterAdapter = ChapterAdapter(emptyList())
+        searchResultAdapter = SearchResultAdapter(emptyList())
         recyclerViewChapters.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = chapterAdapter
@@ -233,11 +244,19 @@ class MainActivity : AppCompatActivity() {
 
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
-                return false
+                searchJob?.cancel()
+                filter(query)
+                // Hide keyboard on submit
+                searchView.clearFocus()
+                return true
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                filter(newText)
+                searchJob?.cancel()
+                searchJob = uiScope.launch {
+                    kotlinx.coroutines.delay(500L) // 500ms debounce delay
+                    filter(newText)
+                }
                 return true
             }
         })
@@ -246,34 +265,61 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        // Cancel any running jobs to avoid memory leaks
+        searchJob?.cancel()
+    }
+
     private fun filter(text: String?) {
         val query = text?.lowercase()?.trim()
-
-        // If the search query is empty, show the original list.
+    
+        // If the search query is empty, restore the original adapter and hide search UI.
         if (query.isNullOrEmpty()) {
-            chapterAdapter.updateChapters(originalChapters)
+            recyclerViewChapters.adapter = chapterAdapter
+            chapterAdapter.updateChapters(originalChapters) // Make sure the original list is shown
             noResultsTextView.visibility = View.GONE
+            searchSummaryTextView.visibility = View.GONE
             return
         }
-
-        // Filter the original list based on multiple fields.
-        val filteredList = originalChapters.filter { chapter ->
-            chapter.heading.lowercase().contains(query) ||
-                    chapter.serial.lowercase().contains(query) ||
-                    chapter.writer.lowercase().contains(query)
+    
+        // Switch to the search adapter
+        if (recyclerViewChapters.adapter !is SearchResultAdapter) {
+            recyclerViewChapters.adapter = searchResultAdapter
         }
-
+    
+        val searchResults = mutableListOf<SearchResult>()
+        var totalOccurrences = 0
+    
+        originalChapters.forEach { chapter ->
+            val headingMatches = chapter.heading.lowercase().windowed(query.length).count { it == query }
+            val serialMatches = chapter.serial.lowercase().windowed(query.length).count { it == query }
+            val writerMatches = chapter.writer.lowercase().windowed(query.length).count { it == query }
+            val dataMatches = chapter.dataText.lowercase().windowed(query.length).count { it == query }
+    
+            val totalMatchesInChapter = headingMatches + serialMatches + writerMatches + dataMatches
+    
+            if (totalMatchesInChapter > 0) {
+                searchResults.add(SearchResult(chapter, totalMatchesInChapter))
+                totalOccurrences += totalMatchesInChapter
+            }
+        }
+    
         // When filtering, exit the "bookmarks only" view for a better user experience.
         if (isShowingBookmarks) {
             isShowingBookmarks = false
             fabBookmarks.setImageResource(R.drawable.ic_bookmark_border)
         }
-
-        chapterAdapter.updateChapters(filteredList)
-
-        if (filteredList.isEmpty()) {
+    
+        searchResultAdapter.updateResults(searchResults)
+    
+        if (searchResults.isEmpty()) {
+            searchSummaryTextView.visibility = View.GONE
             noResultsTextView.visibility = View.VISIBLE
         } else {
+            val summary = "\"$text\" found in ${searchResults.size} chapters, ${totalOccurrences} times total."
+            searchSummaryTextView.text = summary
+            searchSummaryTextView.visibility = View.VISIBLE
             noResultsTextView.visibility = View.GONE
         }
     }

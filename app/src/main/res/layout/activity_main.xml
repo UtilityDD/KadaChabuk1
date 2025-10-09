@@ -182,16 +182,35 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@drawable/ic_bookmark_border" />
 
-    <TextView
-        android:id="@+id/tv_no_results"
+    <!-- No Results Group with Icon -->
+    <LinearLayout
+        android:id="@+id/no_results_group"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="No results found"
-        android:textAppearance="?attr/textAppearanceBodyLarge"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/ic_search"
+            app:tint="?android:attr/textColorSecondary"
+            android:contentDescription="@string/no_chapters_found"
+            android:alpha="0.7"/>
+
+        <TextView
+            android:id="@+id/tv_no_results_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/no_chapters_found"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="?android:attr/textColorSecondary" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -9,6 +9,7 @@ import android.view.View
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Button
+import android.view.animation.AnimationUtils
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.ImageButton
@@ -53,7 +54,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var searchSummaryTextView: TextView
     private lateinit var errorGroup: Group
     private lateinit var errorMessageTextView: TextView
-    private lateinit var noResultsTextView: TextView
+    private lateinit var noResultsGroup: ViewGroup // Changed from TextView
     private var originalChapters: List<Chapter> = emptyList()
     private lateinit var retryButton: Button
     private lateinit var downloadedHeadingsAdapter: DownloadedChaptersAdapter
@@ -107,7 +108,7 @@ class MainActivity : AppCompatActivity() {
         errorGroup = findViewById(R.id.error_group)
         errorMessageTextView = findViewById(R.id.error_message)
         searchSummaryTextView = findViewById(R.id.tv_search_summary)
-        noResultsTextView = findViewById(R.id.tv_no_results)
+        noResultsGroup = findViewById(R.id.no_results_group) // Changed to the new group ID
         retryButton = findViewById(R.id.retry_button)
         fabBookmarks = findViewById(R.id.fab_bookmarks)
         lottieAnimationView.loop(true)
@@ -157,7 +158,7 @@ class MainActivity : AppCompatActivity() {
                 fabBookmarks.setImageResource(R.drawable.ic_bookmark_filled)
             } else {
                 chapterAdapter.updateChapters(originalChapters)
-                noResultsTextView.visibility = View.GONE // Hide "no results" when returning to the full list
+                hideNoResultsView() // Hide "no results" when returning to the full list
                 fabBookmarks.setImageResource(R.drawable.ic_bookmark_border)
                 // If a search query is active, re-apply it
                 val searchItem = optionsMenu?.findItem(R.id.action_search)
@@ -178,7 +179,9 @@ class MainActivity : AppCompatActivity() {
         chapterAdapter.updateChapters(bookmarkedChapters)
 
         if (bookmarkedChapters.isEmpty()) {
-            noResultsTextView.visibility = View.VISIBLE
+            showNoResultsView("No bookmarks added yet")
+        } else {
+            hideNoResultsView()
         }
     }
 
@@ -280,8 +283,8 @@ class MainActivity : AppCompatActivity() {
             // If the search query is empty, restore the original adapter and hide search UI.
             if (query.isNullOrEmpty()) {
                 recyclerViewChapters.adapter = chapterAdapter
-                chapterAdapter.updateChapters(originalChapters) // Make sure the original list is shown
-                noResultsTextView.visibility = View.GONE
+                chapterAdapter.updateChapters(originalChapters)
+                hideNoResultsView()
                 searchSummaryTextView.visibility = View.GONE
                 return@launch
             }
@@ -320,12 +323,12 @@ class MainActivity : AppCompatActivity() {
 
             if (searchResults.isEmpty()) {
                 searchSummaryTextView.visibility = View.GONE
-                noResultsTextView.visibility = View.VISIBLE
+                showNoResultsView("No results found for your search")
             } else {
                 val summary = "\"$text\" found in ${searchResults.size} chapters, $totalOccurrences times total."
                 searchSummaryTextView.text = summary
                 searchSummaryTextView.visibility = View.VISIBLE
-                noResultsTextView.visibility = View.GONE
+                hideNoResultsView()
             }
         }
     }
@@ -406,7 +409,7 @@ class MainActivity : AppCompatActivity() {
                     // This prevents the UI from "jumping" if the user switches to a language with no content.
                     chapterAdapter.updateChapters(emptyList())
                     // recyclerViewChapters.visibility = View.GONE
-                    noResultsTextView.visibility = View.VISIBLE
+                    showNoResultsView(getString(R.string.no_chapters_found))
                     originalChapters = emptyList()
                 }
             }
@@ -432,14 +435,18 @@ class MainActivity : AppCompatActivity() {
                 }
                 rvDownloadedChapterHeadings.visibility = View.VISIBLE // Show progress list
                 recyclerViewChapters.visibility = View.GONE
-                noResultsTextView.visibility = View.GONE
+                hideNoResultsView()
             } else {
                 loadingGroup.visibility = View.GONE
                 if (lottieAnimationView.isAnimating) {
                     lottieAnimationView.cancelAnimation()
                 }
                 rvDownloadedChapterHeadings.visibility = View.GONE // Hide progress list
-                noResultsTextView.visibility = if (chapterAdapter.itemCount == 0) View.VISIBLE else View.GONE
+                if (chapterAdapter.itemCount == 0 && errorGroup.visibility == View.GONE) {
+                    showNoResultsView(getString(R.string.no_chapters_found))
+                } else {
+                    hideNoResultsView()
+                }
                 // When loading is finished, ensure the main content or error is visible.
                 if (bookViewModel.error.value == null) {
                     // If there's no error, the chapters list should be visible (even if empty).
@@ -470,13 +477,17 @@ class MainActivity : AppCompatActivity() {
                 errorMessageTextView.text = it
                 errorGroup.visibility = View.VISIBLE
                 recyclerViewChapters.visibility = View.GONE
-                noResultsTextView.visibility = View.GONE
+                hideNoResultsView()
                 loadingGroup.visibility = View.GONE
                 Log.e("MainActivity", "Error observed: $it. Showing error screen.")
             } ?: run {
                 // This block runs when the error message is null (i.e., cleared).
                 errorGroup.visibility = View.GONE
-                noResultsTextView.visibility = if (chapterAdapter.itemCount == 0) View.VISIBLE else View.GONE
+                if (chapterAdapter.itemCount == 0) {
+                    showNoResultsView(getString(R.string.no_chapters_found))
+                } else {
+                    hideNoResultsView()
+                }
                 Log.d("MainActivity", "Error cleared. Hiding error screen.")
             }
         }
@@ -490,5 +501,24 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun showNoResultsView(message: String) {
+        val noResultsTextView = noResultsGroup.findViewById<TextView>(R.id.tv_no_results_text)
+        noResultsTextView.text = message
+
+        if (noResultsGroup.visibility == View.VISIBLE) return
+
+        val animation = AnimationUtils.loadAnimation(this, R.anim.fade_in_slide_up)
+        noResultsGroup.startAnimation(animation)
+        noResultsGroup.visibility = View.VISIBLE
+    }
+
+    private fun hideNoResultsView() {
+        if (noResultsGroup.visibility == View.GONE) return // Do nothing if already hidden
+
+        // You could add a fade-out animation here if desired, but for now, just hide it.
+        noResultsGroup.clearAnimation() // Clear any running animation
+        noResultsGroup.visibility = View.GONE
     }
 }

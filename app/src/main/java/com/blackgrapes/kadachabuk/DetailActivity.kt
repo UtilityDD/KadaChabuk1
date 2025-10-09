@@ -34,6 +34,7 @@ import kotlin.random.Random // <-- IMPORT THIS
 private const val FONT_PREFS = "FontPrefs"
 private const val KEY_FONT_SIZE = "fontSize"
 private const val DEFAULT_FONT_SIZE = 18f
+private const val BOOKMARK_PREFS = "BookmarkPrefs"
 private const val SCROLL_PREFS = "ScrollPositions"
 
 class DetailActivity : AppCompatActivity() {
@@ -44,6 +45,7 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var textViewData: TextView
     private lateinit var fontSettingsButton: ImageButton
     private lateinit var backButton: ImageButton
+    private lateinit var bookmarkButton: ImageButton
     private lateinit var chapterSerial: String
     private lateinit var languageCode: String
 
@@ -72,6 +74,7 @@ class DetailActivity : AppCompatActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             fontSettingsButton.updatePadding(top = systemBars.top)
+            bookmarkButton.updatePadding(top = systemBars.top)
             backButton.updatePadding(top = systemBars.top)
             insets
         }
@@ -85,6 +88,7 @@ class DetailActivity : AppCompatActivity() {
         textViewData = findViewById(R.id.textViewData)
         fontSettingsButton = findViewById(R.id.button_font_settings)
         backButton = findViewById(R.id.button_back)
+        bookmarkButton = findViewById(R.id.button_bookmark)
 
         val heading = intent.getStringExtra("EXTRA_HEADING")
         val date = intent.getStringExtra("EXTRA_DATE")
@@ -101,6 +105,7 @@ class DetailActivity : AppCompatActivity() {
         loadAndApplyFontSize()
         textViewWriter.text = writer
         setupFontSettingsButton()
+        setupBookmarkButton()
 
         // Request focus for the TextView
         textViewData.requestFocus()
@@ -136,9 +141,51 @@ class DetailActivity : AppCompatActivity() {
         setRandomHeaderImage()
     }
 
+    private fun setupBookmarkButton() {
+        checkAndSetBookmarkState()
+
+        bookmarkButton.setOnClickListener {
+            val prefs = getSharedPreferences(BOOKMARK_PREFS, Context.MODE_PRIVATE)
+            val key = getBookmarkKey() ?: return@setOnClickListener
+            val isBookmarked = prefs.getBoolean(key, false)
+
+            with(prefs.edit()) {
+                putBoolean(key, !isBookmarked)
+                apply()
+            }
+
+            if (!isBookmarked) {
+                bookmarkButton.setImageResource(R.drawable.ic_bookmark_filled)
+                Toast.makeText(this, "Bookmark added", Toast.LENGTH_SHORT).show()
+            } else {
+                bookmarkButton.setImageResource(R.drawable.ic_bookmark_border)
+                Toast.makeText(this, "Bookmark removed", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun checkAndSetBookmarkState() {
+        val key = getBookmarkKey() ?: return
+        val prefs = getSharedPreferences(BOOKMARK_PREFS, Context.MODE_PRIVATE)
+        val isBookmarked = prefs.getBoolean(key, false)
+        if (isBookmarked) {
+            bookmarkButton.setImageResource(R.drawable.ic_bookmark_filled)
+        } else {
+            bookmarkButton.setImageResource(R.drawable.ic_bookmark_border)
+        }
+    }
+
     private fun getScrollPositionKey(): String? {
         return if (::chapterSerial.isInitialized && ::languageCode.isInitialized && chapterSerial.isNotEmpty() && languageCode.isNotEmpty()) {
             "scroll_pos_${languageCode}_${chapterSerial}"
+        } else {
+            null
+        }
+    }
+
+    private fun getBookmarkKey(): String? {
+        return if (::chapterSerial.isInitialized && ::languageCode.isInitialized && chapterSerial.isNotEmpty() && languageCode.isNotEmpty()) {
+            "bookmark_${languageCode}_${chapterSerial}"
         } else {
             null
         }

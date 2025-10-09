@@ -4,4 +4,8 @@
         android:id="@+id/action_share"
         android:title="Share"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_share_app"
+        android:title="Share App"
+        app:showAsAction="never" />
 </menu>

@@ -26,6 +26,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.recyclerview.widget.RecyclerView
+import androidx.core.app.ShareCompat
 import com.airbnb.lottie.LottieAnimationView
 import com.google.android.material.appbar.MaterialToolbar
 
@@ -207,6 +208,10 @@ class MainActivity : AppCompatActivity() {
                 getSharedPreferences("ThemePrefs", Context.MODE_PRIVATE).edit().putInt("NightMode", newNightMode).apply()
                 true
             }
+            R.id.action_share_app -> {
+                shareApp()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -218,6 +223,20 @@ class MainActivity : AppCompatActivity() {
         } else {
             themeMenuItem.setIcon(R.drawable.ic_dark_mode)
         }
+    }
+    
+    private fun shareApp() {
+        val appPackageName = packageName // Get the package name of your app
+        val appLink = "https://play.google.com/store/apps/details?id=$appPackageName"
+
+        val shareIntent = ShareCompat.IntentBuilder(this)
+            .setType("text/plain")
+            .setText("Check out this app: $appLink")
+            .setSubject("Share App")
+            .setChooserTitle("Share App via")
+            .intent
+
+        startActivity(shareIntent)
     }
 
     private fun observeViewModel() {

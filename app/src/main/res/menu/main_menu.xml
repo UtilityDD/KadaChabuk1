@@ -18,6 +18,11 @@
                 android:id="@+id/action_language_change"
                 android:title="@string/change_language_description"
                 app:showAsAction="never" />
+            <item
+                android:id="@+id/action_share_app"
+                android:title="Share App"
+                app:showAsAction="never" />
+
         </menu>
     </item>
 

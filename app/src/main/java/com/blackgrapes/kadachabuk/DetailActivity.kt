@@ -65,7 +65,7 @@ class DetailActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detail)
         // Enable the action bar menu
-        setHasOptionsMenu(true)
+        enableActionBarMenu()
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -274,12 +274,16 @@ class DetailActivity : AppCompatActivity() {
                 shareText()
                 true
             }
+            R.id.action_share_app -> {
+                shareApp()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
 
-    private fun setHasOptionsMenu(b: Boolean) {
-
+    private fun enableActionBarMenu() {
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
     }
 
     private fun shareText() {
@@ -316,4 +320,21 @@ class DetailActivity : AppCompatActivity() {
                 .startChooser()
         }
     }
+
+    private fun shareApp() {
+        val appPackageName = packageName // Get the package name of your app
+        val appLink = "https://play.google.com/store/apps/details?id=$appPackageName"
+
+        val shareIntent = ShareCompat.IntentBuilder(this)
+            .setType("text/plain")
+            .setText("Check out this app: $appLink")
+            .setSubject("Share App")
+            .setChooserTitle("Share App via")
+            .intent
+
+        if (shareIntent.resolveActivity(packageManager) != null) {
+            startActivity(shareIntent)
+        }
+    }
+
 }

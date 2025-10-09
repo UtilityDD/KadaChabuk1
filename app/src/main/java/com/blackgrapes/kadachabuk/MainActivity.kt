@@ -27,6 +27,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.app.ShareCompat
 import com.airbnb.lottie.LottieAnimationView
 import com.google.android.material.appbar.MaterialToolbar
@@ -49,6 +50,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var retryButton: Button
     private lateinit var downloadedHeadingsAdapter: DownloadedChaptersAdapter
 
+    private lateinit var fabBookmarks: FloatingActionButton
+    private var isShowingBookmarks = false
     private lateinit var languageCodes: Array<String>
     private lateinit var languageNames: Array<String>
 
@@ -80,6 +83,7 @@ class MainActivity : AppCompatActivity() {
         loadLanguageArrays()
         setupAdaptersAndRecyclerViews()
         checkIfLanguageNotSet()
+        setupFab()
         observeViewModel()
     }
 
@@ -92,6 +96,7 @@ class MainActivity : AppCompatActivity() {
         errorGroup = findViewById(R.id.error_group)
         errorMessageTextView = findViewById(R.id.error_message)
         retryButton = findViewById(R.id.retry_button)
+        fabBookmarks = findViewById(R.id.fab_bookmarks)
         lottieAnimationView.loop(true)
     }
 
@@ -127,6 +132,38 @@ class MainActivity : AppCompatActivity() {
                 val langIndex = languageCodes.indexOf(savedLangCode)
                 bookViewModel.fetchAndLoadChapters(savedLangCode, languageNames[langIndex], forceDownload = true)
             }
+        }
+    }
+
+    private fun setupFab() {
+        fabBookmarks.setOnClickListener {
+            isShowingBookmarks = !isShowingBookmarks
+            if (isShowingBookmarks) {
+                filterBookmarkedChapters()
+                fabBookmarks.setImageResource(R.drawable.ic_bookmark_filled)
+            } else {
+                chapterAdapter.updateChapters(originalChapters)
+                fabBookmarks.setImageResource(R.drawable.ic_bookmark_border)
+                // If a search query is active, re-apply it
+                val searchItem = optionsMenu?.findItem(R.id.action_search)
+                val searchView = searchItem?.actionView as? SearchView
+                if (searchView != null && !searchView.isIconified && !searchView.query.isNullOrEmpty()) {
+                    filter(searchView.query.toString())
+                }
+            }
+        }
+    }
+
+    private fun filterBookmarkedChapters() {
+        val bookmarkPrefs = getSharedPreferences("BookmarkPrefs", Context.MODE_PRIVATE)
+        val bookmarkedChapters = originalChapters.filter { chapter ->
+            val key = "bookmark_${chapter.languageCode}_${chapter.serial}"
+            bookmarkPrefs.getBoolean(key, false)
+        }
+        chapterAdapter.updateChapters(bookmarkedChapters)
+
+        if (bookmarkedChapters.isEmpty()) {
+            Toast.makeText(this, "No bookmarked chapters found.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -216,6 +253,12 @@ class MainActivity : AppCompatActivity() {
         }
         if (filteredList.isEmpty()) {
         } else {
+            // When filtering, if we are in the "bookmarks only" view, we should filter from that list.
+            // However, for simplicity and better user experience, we will exit the bookmark-only view.
+            if (isShowingBookmarks) {
+                isShowingBookmarks = false
+                fabBookmarks.setImageResource(R.drawable.ic_bookmarks)
+            }
             chapterAdapter.updateChapters(filteredList)
         }
     }
@@ -274,6 +317,7 @@ class MainActivity : AppCompatActivity() {
             chapters?.let {
                 if (it.isNotEmpty()) {
                     chapterAdapter.updateChapters(it)
+                    originalChapters = it // Store the full list
                     recyclerViewChapters.visibility = View.VISIBLE
                 } else {
                     if (bookViewModel.isLoading.value == false && bookViewModel.error.value == null) {
@@ -283,6 +327,7 @@ class MainActivity : AppCompatActivity() {
                     // This prevents the UI from "jumping" if the user switches to a language with no content.
                     chapterAdapter.updateChapters(emptyList())
                     // recyclerViewChapters.visibility = View.GONE
+                    originalChapters = emptyList()
                 }
             }
         }

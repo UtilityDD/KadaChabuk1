@@ -157,6 +157,7 @@ class MainActivity : AppCompatActivity() {
                 fabBookmarks.setImageResource(R.drawable.ic_bookmark_filled)
             } else {
                 chapterAdapter.updateChapters(originalChapters)
+                noResultsTextView.visibility = View.GONE // Hide "no results" when returning to the full list
                 fabBookmarks.setImageResource(R.drawable.ic_bookmark_border)
                 // If a search query is active, re-apply it
                 val searchItem = optionsMenu?.findItem(R.id.action_search)

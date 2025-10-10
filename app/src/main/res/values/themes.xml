@@ -23,4 +23,10 @@
     </style>
 
     <style name="Theme.KadaChabuk" parent="Base.Theme.KadaChabuk" />
+
+    <style name="App.Widget.SearchView" parent="Widget.AppCompat.SearchView">
+        <item name="android:textColor">?attr/colorOnPrimary</item> <!-- Color for the text you type -->
+        <item name="android:textColorHint">@color/material_on_primary_disabled</item> <!-- Color for the "Search..." hint -->
+    </style>
+
 </resources>

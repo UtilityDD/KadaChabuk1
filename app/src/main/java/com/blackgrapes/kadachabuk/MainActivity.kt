@@ -1,6 +1,8 @@
 package com.blackgrapes.kadachabuk
 
 import android.app.Dialog
+import android.database.MatrixCursor
+import android.provider.BaseColumns
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
@@ -11,6 +13,7 @@ import android.view.MenuItem
 import android.widget.Button
 import android.view.animation.AnimationUtils
 import android.view.ViewGroup
+import androidx.cursoradapter.widget.SimpleCursorAdapter
 import android.view.Window
 import android.widget.ImageButton
 import android.widget.TextView
@@ -37,6 +40,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+
+private const val SEARCH_HISTORY_PREFS = "SearchHistoryPrefs"
+private const val KEY_SEARCH_HISTORY = "search_history"
+private const val MAX_SEARCH_HISTORY = 10
 
 
 class MainActivity : AppCompatActivity() {
@@ -246,10 +253,12 @@ class MainActivity : AppCompatActivity() {
         optionsMenu = menu
         val searchItem = menu.findItem(R.id.action_search)
         val searchView = searchItem.actionView as SearchView
+        setupSearchSuggestions(searchView)
 
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 searchJob?.cancel()
+                saveSearchQuery(query ?: "")
                 filter(query)
                 // Hide keyboard on submit
                 searchView.clearFocus()
@@ -260,6 +269,7 @@ class MainActivity : AppCompatActivity() {
                 searchJob?.cancel()
                 searchJob = uiScope.launch {
                     kotlinx.coroutines.delay(500L) // 500ms debounce delay
+                    populateSearchSuggestions(newText, searchView)
                     filter(newText)
                 }
                 return true
@@ -270,10 +280,77 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    private fun setupSearchSuggestions(searchView: SearchView) {
+        val from = arrayOf("query")
+        val to = intArrayOf(R.id.suggestion_text)
+        val cursorAdapter = SimpleCursorAdapter(
+            this,
+            R.layout.item_search_suggestion,
+            null,
+            from,
+            to,
+            SimpleCursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER
+        )
+
+        searchView.suggestionsAdapter = cursorAdapter
+
+        searchView.setOnSuggestionListener(object : SearchView.OnSuggestionListener {
+            override fun onSuggestionSelect(position: Int): Boolean {
+                return false
+            }
+
+            override fun onSuggestionClick(position: Int): Boolean {
+                val cursor = searchView.suggestionsAdapter.cursor
+                if (cursor.moveToPosition(position)) {
+                    val query = cursor.getString(cursor.getColumnIndexOrThrow("query"))
+                    searchView.setQuery(query, true)
+                }
+                return true
+            }
+        })
+    }
+
+
+
     override fun onDestroy() {
         super.onDestroy()
         // Cancel any running jobs to avoid memory leaks
         searchJob?.cancel()
+    }
+
+    private fun saveSearchQuery(query: String) {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.isBlank()) return
+
+        val prefs = getSharedPreferences(SEARCH_HISTORY_PREFS, Context.MODE_PRIVATE)
+        val history = getSearchHistory().toMutableList()
+
+        history.remove(trimmedQuery) // Remove if it already exists to move it to the top
+        history.add(0, trimmedQuery) // Add to the top (most recent)
+
+        val trimmedHistory = history.take(MAX_SEARCH_HISTORY)
+
+        with(prefs.edit()) {
+            putStringSet(KEY_SEARCH_HISTORY, trimmedHistory.toSet())
+            apply()
+        }
+    }
+
+    private fun getSearchHistory(): List<String> {
+        val prefs = getSharedPreferences(SEARCH_HISTORY_PREFS, Context.MODE_PRIVATE)
+        // The set is unordered, so we can't rely on its iteration order.
+        // For simplicity here, we'll just sort it alphabetically. A more complex
+        // implementation might store timestamps.
+        return prefs.getStringSet(KEY_SEARCH_HISTORY, emptySet())?.sorted() ?: emptyList()
+    }
+
+    private fun populateSearchSuggestions(query: String?, searchView: SearchView) {
+        val history = getSearchHistory().filter { it.contains(query ?: "", ignoreCase = true) }
+        val cursor = MatrixCursor(arrayOf(BaseColumns._ID, "query"))
+        history.forEachIndexed { index, suggestion ->
+            cursor.addRow(arrayOf(index, suggestion))
+        }
+        searchView.suggestionsAdapter.changeCursor(cursor)
     }
 
     private fun filter(text: String?) {

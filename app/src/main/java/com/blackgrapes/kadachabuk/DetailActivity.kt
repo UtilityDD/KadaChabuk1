@@ -149,8 +149,11 @@ class DetailActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        // Check for a saved scroll position and prompt the user
-        checkForSavedScrollPosition()
+        val searchQuery = intent.getStringExtra("EXTRA_SEARCH_QUERY")
+        // Check for a saved scroll position, but only if not coming from a search result.
+        if (searchQuery.isNullOrEmpty()) {
+            checkForSavedScrollPosition()
+        }
 
         // Enter full screen as soon as the activity is created
         enterFullScreen()

@@ -58,6 +58,7 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var searchNavigationLayout: LinearLayout
     private lateinit var previousMatchButton: ImageButton
     private lateinit var nextMatchButton: ImageButton
+    private lateinit var matchCountTextView: TextView
 
     private val matchIndices = mutableListOf<Int>()
     private var currentMatchIndex = -1
@@ -105,6 +106,7 @@ class DetailActivity : AppCompatActivity() {
         searchNavigationLayout = findViewById(R.id.search_navigation_layout)
         previousMatchButton = findViewById(R.id.button_previous_match)
         nextMatchButton = findViewById(R.id.button_next_match)
+        matchCountTextView = findViewById(R.id.text_view_match_count)
 
 
         val heading = intent.getStringExtra("EXTRA_HEADING")
@@ -355,6 +357,7 @@ class DetailActivity : AppCompatActivity() {
         if (matchIndices.isNotEmpty()) {
             currentMatchIndex = 0
             scrollToMatch(currentMatchIndex)
+            updateMatchCount()
             searchNavigationLayout.visibility = View.VISIBLE
         } else {
             searchNavigationLayout.visibility = View.GONE
@@ -369,6 +372,7 @@ class DetailActivity : AppCompatActivity() {
                     currentMatchIndex = matchIndices.size - 1 // Loop to the end
                 }
                 scrollToMatch(currentMatchIndex)
+                updateMatchCount()
             }
         }
 
@@ -379,7 +383,16 @@ class DetailActivity : AppCompatActivity() {
                     currentMatchIndex = 0 // Loop to the beginning
                 }
                 scrollToMatch(currentMatchIndex)
+                updateMatchCount()
             }
+        }
+    }
+
+    private fun updateMatchCount() {
+        if (matchIndices.isNotEmpty()) {
+            matchCountTextView.text = "${currentMatchIndex + 1} of ${matchIndices.size}"
+        } else {
+            matchCountTextView.text = ""
         }
     }
 
@@ -387,12 +400,34 @@ class DetailActivity : AppCompatActivity() {
         if (matchIndex < 0 || matchIndex >= matchIndices.size) return
 
         val charIndex = matchIndices[matchIndex]
+        val searchQuery = intent.getStringExtra("EXTRA_SEARCH_QUERY") ?: return
+        val spannable = textViewData.text as? SpannableStringBuilder ?: SpannableStringBuilder(textViewData.text)
+
+        // Animate the highlight for the current match
+        val animator = ValueAnimator.ofArgb(
+            ContextCompat.getColor(this, R.color.flash_color),
+            ContextCompat.getColor(this, R.color.highlight_color)
+        )
+        animator.duration = 800 // A quicker, more noticeable flash (800ms)
+        animator.addUpdateListener { animation ->
+            val color = animation.animatedValue as Int
+            val highlightSpan = BackgroundColorSpan(color)
+            // Remove any previous spans on this section before adding a new one
+            val existingSpans = spannable.getSpans(charIndex, charIndex + searchQuery.length, BackgroundColorSpan::class.java)
+            existingSpans.forEach { spannable.removeSpan(it) }
+            // Add the new, animated-color span
+            spannable.setSpan(highlightSpan, charIndex, charIndex + searchQuery.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            // Set the text once with the modified spannable
+            textViewData.text = spannable
+        }
+        animator.start()
+
         scrollView.post {
             val layout = textViewData.layout
             if (layout != null) {
                 val line = layout.getLineForOffset(charIndex)
                 // Calculate y position to scroll to, with some offset to not be at the very top
-                val y = layout.getLineTop(line) - (scrollView.height / 4)
+                val y = layout.getLineTop(line) - (scrollView.height / 3)
                 scrollView.smoothScrollTo(0, y.coerceAtLeast(0))
             }
         }

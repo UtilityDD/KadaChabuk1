@@ -146,11 +146,21 @@
             android:contentDescription="Previous match"
             android:background="?attr/selectableItemBackgroundBorderless" />
 
+        <TextView
+            android:id="@+id/text_view_match_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurface"
+            tools:text="1 of 10" />
+
         <ImageButton
             android:id="@+id/button_next_match"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_marginStart="32dp"
             android:src="@drawable/ic_expand_more_22px"
             android:contentDescription="Next match"
             android:background="?attr/selectableItemBackgroundBorderless" />

@@ -18,6 +18,8 @@
     <color name="light_onSurfaceVariant">#757575</color> <!-- Lighter gray for secondary text -->
     <color name="selectedLineColor">#80DEEA</color>
     <color name="highlight_color">#80FFEB3B</color> <!-- Semi-transparent yellow for highlighting -->
+    <color name="highlight_color_animated">#CCFFEB3B</color> <!-- Brighter, more opaque yellow for animation -->
+    <color name="flash_color">#994CDADA</color> <!-- A theme-aware cyan for a prominent flash -->
 
     <!-- Dark Theme Palette -->
     <color name="dark_primary">#4CDADA</color>

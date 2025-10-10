@@ -357,7 +357,7 @@ class DetailActivity : AppCompatActivity() {
         if (matchIndices.isNotEmpty()) {
             currentMatchIndex = 0
             scrollToMatch(currentMatchIndex)
-            updateMatchCount()
+            updateNavigationState()
             searchNavigationLayout.visibility = View.VISIBLE
         } else {
             searchNavigationLayout.visibility = View.GONE
@@ -367,32 +367,30 @@ class DetailActivity : AppCompatActivity() {
     private fun setupSearchNavigation() {
         previousMatchButton.setOnClickListener {
             if (matchIndices.isNotEmpty()) {
-                currentMatchIndex--
-                if (currentMatchIndex < 0) {
-                    currentMatchIndex = matchIndices.size - 1 // Loop to the end
+                if (currentMatchIndex > 0) {
+                    currentMatchIndex--
+                    scrollToMatch(currentMatchIndex)
+                    updateNavigationState()
                 }
-                scrollToMatch(currentMatchIndex)
-                updateMatchCount()
             }
         }
 
         nextMatchButton.setOnClickListener {
             if (matchIndices.isNotEmpty()) {
-                currentMatchIndex++
-                if (currentMatchIndex >= matchIndices.size) {
-                    currentMatchIndex = 0 // Loop to the beginning
+                if (currentMatchIndex < matchIndices.size - 1) {
+                    currentMatchIndex++
+                    scrollToMatch(currentMatchIndex)
+                    updateNavigationState()
                 }
-                scrollToMatch(currentMatchIndex)
-                updateMatchCount()
             }
         }
     }
 
-    private fun updateMatchCount() {
+    private fun updateNavigationState() {
         if (matchIndices.isNotEmpty()) {
             matchCountTextView.text = "${currentMatchIndex + 1} of ${matchIndices.size}"
-        } else {
-            matchCountTextView.text = ""
+            previousMatchButton.isEnabled = currentMatchIndex > 0
+            nextMatchButton.isEnabled = currentMatchIndex < matchIndices.size - 1
         }
     }
 

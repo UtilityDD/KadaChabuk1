@@ -15,6 +15,7 @@ import android.view.animation.AnimationUtils
 import android.view.ViewGroup
 import androidx.cursoradapter.widget.SimpleCursorAdapter
 import android.view.Window
+import android.util.TypedValue
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
@@ -87,17 +88,50 @@ class MainActivity : AppCompatActivity() {
         applySavedTheme()
         setContentView(R.layout.activity_main)
 
-        val appBarLayout: AppBarLayout = findViewById(R.id.app_bar_layout)
+        // Allow the app to draw behind the system bars for a seamless UI
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Make the status bar transparent to show the AppBarLayout's color underneath
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+
+
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.title = ""
 
         initializeViews()
+
+        // Handle window insets to prevent overlap with the status bar
+        handleWindowInsets()
+
         loadLanguageArrays()
         setupAdaptersAndRecyclerViews()
         checkIfLanguageNotSet()
         setupFab()
         observeViewModel()
+    }
+
+    private fun handleWindowInsets() {
+        // We apply the listener to the toolbar, not the AppBarLayout.
+        // This way, the AppBarLayout's background draws behind the status bar,
+        // and we only add padding to the toolbar itself to prevent content overlap.
+        val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
+        ViewCompat.setOnApplyWindowInsetsListener(toolbar) { view, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+            // Apply the top inset as padding to push the toolbar's content down
+            view.setPadding(view.paddingLeft, insets.top, view.paddingRight, view.paddingBottom)
+
+            // Increase the toolbar's height to accommodate the new padding
+            // Get the default toolbar height from the theme attribute for robustness
+            val typedValue = TypedValue()
+            theme.resolveAttribute(android.R.attr.actionBarSize, typedValue, true)
+            val actionBarSize = TypedValue.complexToDimensionPixelSize(typedValue.data, resources.displayMetrics)
+
+            view.layoutParams.height = actionBarSize + insets.top
+
+            // We've handled the insets, so consume them
+            WindowInsetsCompat.CONSUMED
+        }
     }
 
     private fun initializeViews() {

@@ -24,6 +24,11 @@ class CoverActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cover)
 
+        // Allow the app to draw behind the system bars for a seamless UI
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Make the status bar transparent to show the background color underneath
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+
         coverLayout = findViewById(R.id.cover_layout)
         tapToOpenText = findViewById(R.id.textView)
 

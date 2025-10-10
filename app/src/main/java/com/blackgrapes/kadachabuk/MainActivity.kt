@@ -553,6 +553,7 @@ class MainActivity : AppCompatActivity() {
             optionsMenu?.findItem(R.id.action_theme_toggle)?.isEnabled = !isLoading
             optionsMenu?.findItem(R.id.action_overflow)?.isEnabled = !isLoading
             val alpha = if (isLoading) 128 else 255 // 50% transparent when disabled
+            optionsMenu?.findItem(R.id.action_search)?.icon?.alpha = alpha
             optionsMenu?.findItem(R.id.action_theme_toggle)?.icon?.alpha = alpha
             // The search icon is part of the SearchView, so we can't just set its icon alpha. Disabling the item is sufficient.
             optionsMenu?.findItem(R.id.action_overflow)?.icon?.alpha = alpha

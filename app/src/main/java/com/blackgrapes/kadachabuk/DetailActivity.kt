@@ -34,6 +34,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
 import kotlin.random.Random // <-- IMPORT THIS
+import java.util.concurrent.TimeUnit
 
 private const val FONT_PREFS = "FontPrefs"
 private const val KEY_FONT_SIZE = "fontSize"
@@ -211,25 +212,46 @@ class DetailActivity : AppCompatActivity() {
     }
 
     private fun saveScrollPosition() {
-        getScrollPositionKey()?.let { key ->
+        val scrollKey = getScrollPositionKey()
+        val timeKey = getTimestampKey()
+
+        if (scrollKey != null && timeKey != null) {
             val sharedPreferences = getSharedPreferences(SCROLL_PREFS, Context.MODE_PRIVATE)
             with(sharedPreferences.edit()) {
-                putInt(key, scrollView.scrollY)
+                putInt(scrollKey, scrollView.scrollY)
+                putLong(timeKey, System.currentTimeMillis()) // Also save the current time
                 apply()
             }
         }
     }
 
-    private fun checkForSavedScrollPosition() {
-        getScrollPositionKey()?.let { key ->
-            val sharedPreferences = getSharedPreferences(SCROLL_PREFS, Context.MODE_PRIVATE)
-            val savedScrollY = sharedPreferences.getInt(key, 0)
+    private fun getTimestampKey(): String? {
+        return if (::chapterSerial.isInitialized && ::languageCode.isInitialized && chapterSerial.isNotEmpty() && languageCode.isNotEmpty()) {
+            "scroll_time_${languageCode}_${chapterSerial}"
+        } else {
+            null
+        }
+    }
 
-            if (savedScrollY > 100) { // Only prompt if they've scrolled a bit
+    private fun checkForSavedScrollPosition() {
+        val scrollKey = getScrollPositionKey()
+        val timeKey = getTimestampKey()
+
+        if (scrollKey != null && timeKey != null) {
+            val sharedPreferences = getSharedPreferences(SCROLL_PREFS, Context.MODE_PRIVATE)
+            val savedScrollY = sharedPreferences.getInt(scrollKey, 0)
+            val savedTimestamp = sharedPreferences.getLong(timeKey, 0)
+
+            if (savedScrollY > 100 && savedTimestamp > 0) { // Only prompt if they've scrolled a bit
+                val daysDifference = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - savedTimestamp)
+                val (title, message) = getResumeDialogTexts(daysDifference)
+
                 MaterialAlertDialogBuilder(this)
-                    .setTitle("Continue from where you left off?")
-                    .setPositiveButton("Resume") { dialog, _ ->
-                        scrollView.post { scrollView.smoothScrollTo(0, savedScrollY) }
+                    .setTitle(title)
+                    .setMessage(message)
+                    .setIcon(R.drawable.ic_bookmark) // Adds a visual cue to the dialog
+                    .setPositiveButton("Resume") { dialog, _ -> // Use smoothScrollTo for an animated scroll
+                        scrollView.post { scrollView.smoothScrollTo(0, savedScrollY) } 
                         dialog.dismiss()
                     }
                     .setNegativeButton("Start Over") { dialog, _ ->
@@ -238,6 +260,24 @@ class DetailActivity : AppCompatActivity() {
                     .show()
             }
         }
+    }
+
+    private fun getResumeDialogTexts(daysSinceLastRead: Long): Pair<String, String> {
+        val message = "Ready to continue from where you left off?"
+        val title = when {
+            daysSinceLastRead < 1 -> "Picking Up Again?"
+            daysSinceLastRead == 1L -> "Welcome Back!"
+            daysSinceLastRead in 2..6 -> "It's Been a Little While!"
+            daysSinceLastRead in 7..29 -> "Dusting This One Off?"
+            daysSinceLastRead >= 30 -> "A Long-Lost Friend Returns!"
+            else -> "Welcome Back!" // Fallback
+        }
+        return Pair(title, message)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        saveScrollPosition()
     }
 
     private fun setRandomHeaderImage() {
@@ -389,11 +429,6 @@ class DetailActivity : AppCompatActivity() {
         val insets = ViewCompat.getRootWindowInsets(window.decorView)
         val systemBarInsets = insets?.getInsets(WindowInsetsCompat.Type.systemBars())
         scrollView.setPadding(systemBarInsets?.left ?: 0, 0, systemBarInsets?.right ?: 0, 0)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        saveScrollPosition()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

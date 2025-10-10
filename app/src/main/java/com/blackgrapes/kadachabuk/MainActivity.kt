@@ -87,12 +87,6 @@ class MainActivity : AppCompatActivity() {
         applySavedTheme()
         setContentView(R.layout.activity_main)
 
-        // Make the activity fullscreen, hiding system bars
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        val controller = ViewCompat.getWindowInsetsController(window.decorView)
-        controller?.hide(WindowInsetsCompat.Type.systemBars())
-        controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-
         val appBarLayout: AppBarLayout = findViewById(R.id.app_bar_layout)
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)

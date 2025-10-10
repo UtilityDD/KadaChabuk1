@@ -24,12 +24,6 @@ class CoverActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_cover)
 
-        // Make it fullscreen
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        val controller = ViewCompat.getWindowInsetsController(window.decorView)
-        controller?.hide(WindowInsetsCompat.Type.systemBars())
-        controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-
         coverLayout = findViewById(R.id.cover_layout)
         tapToOpenText = findViewById(R.id.textView)
 

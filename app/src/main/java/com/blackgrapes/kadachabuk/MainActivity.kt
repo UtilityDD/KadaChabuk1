@@ -252,11 +252,10 @@ class MainActivity : AppCompatActivity() {
             // This will only happen on the very first app launch.
             showLanguageSelectionDialog(isCancelable = false)
         } else if (bookViewModel.chapters.value.isNullOrEmpty() && bookViewModel.isLoading.value != true) {
-            // This is a crucial check. If MainActivity starts and finds:
-            // 1. There are no chapters displayed.
-            // 2. A loading process is NOT already running (started by CoverActivity).
-            // This means pre-loading didn't happen or failed. We must trigger the load now.
-            bookViewModel.fetchAndLoadChapters(savedLangCode, languageNames[languageCodes.indexOf(savedLangCode)], forceDownload = false)
+            // If a language is saved but no chapters are loaded (e.g., app was closed during initial load),
+            // automatically resume fetching the chapters without showing a dialog.
+            val langIndex = languageCodes.indexOf(savedLangCode)
+            bookViewModel.fetchAndLoadChapters(savedLangCode, languageNames[langIndex], forceDownload = false)
         }
     }
 
@@ -295,7 +294,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun applySavedTheme() {
         val sharedPreferences = getSharedPreferences("ThemePrefs", Context.MODE_PRIVATE)
-        val nightMode = sharedPreferences.getInt("NightMode", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+        val nightMode = sharedPreferences.getInt("NightMode", AppCompatDelegate.MODE_NIGHT_NO)
         AppCompatDelegate.setDefaultNightMode(nightMode)
     }
 

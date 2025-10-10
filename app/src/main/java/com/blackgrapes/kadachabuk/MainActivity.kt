@@ -11,6 +11,7 @@ import android.view.View
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Button
+import androidx.core.graphics.ColorUtils
 import android.view.animation.AnimationUtils
 import android.view.ViewGroup
 import androidx.cursoradapter.widget.SimpleCursorAdapter
@@ -93,11 +94,8 @@ class MainActivity : AppCompatActivity() {
         // Make the status bar transparent to show the AppBarLayout's color underneath
         window.statusBarColor = android.graphics.Color.TRANSPARENT
 
-        // Adjust system icon colors based on the current theme (light/dark)
-        val controller = ViewCompat.getWindowInsetsController(window.decorView)
-        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        controller?.isAppearanceLightStatusBars = !isNightMode
-
+        // Adjust system icon colors to match the current theme (light/dark)
+        setStatusBarIconColor()
 
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -113,6 +111,26 @@ class MainActivity : AppCompatActivity() {
         checkIfLanguageNotSet()
         setupFab()
         observeViewModel()
+    }
+
+    /**
+     * Sets the status bar icon color (light/dark) to match the AppBar's icon color.
+     * This is done by checking the luminance of the `colorOnPrimary` theme attribute.
+     */
+    private fun setStatusBarIconColor() {
+        ViewCompat.getWindowInsetsController(window.decorView)?.let { controller ->
+            // Get the AppBar's icon color from the current theme
+            val typedValue = TypedValue()
+            theme.resolveAttribute(com.google.android.material.R.attr.colorOnPrimary, typedValue, true)
+            val colorOnPrimary = typedValue.data
+
+            // Check if the icon color is light or dark
+            val isIconColorLight = ColorUtils.calculateLuminance(colorOnPrimary) > 0.5
+
+            // isAppearanceLightStatusBars = true means DARK icons
+            // isAppearanceLightStatusBars = false means LIGHT icons
+            controller.isAppearanceLightStatusBars = !isIconColorLight
+        }
     }
 
     private fun handleWindowInsets() {

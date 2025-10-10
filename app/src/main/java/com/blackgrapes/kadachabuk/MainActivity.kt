@@ -526,18 +526,23 @@ class MainActivity : AppCompatActivity() {
             chapters?.let {
                 if (it.isNotEmpty()) {
                     chapterAdapter.updateChapters(it)
+                    hideNoResultsView()
                     originalChapters = it // Store the full list
                     recyclerViewChapters.visibility = View.VISIBLE
-                } else {
-                    if (bookViewModel.isLoading.value == false && bookViewModel.error.value == null) {
-                        Toast.makeText(this, getString(R.string.no_chapters_found), Toast.LENGTH_SHORT).show()
-                    }
+                } else { // This block runs when the observed chapter list is empty.
+                    // Only show "No chapters" if we are not in a loading state and there's no error.
                     // Don't hide the RecyclerView if there are no chapters, just show an empty state.
                     // This prevents the UI from "jumping" if the user switches to a language with no content.
                     chapterAdapter.updateChapters(emptyList())
-                    // recyclerViewChapters.visibility = View.GONE
-                    showNoResultsView(getString(R.string.no_chapters_found))
                     originalChapters = emptyList()
+                    // Only show the "no results" message if we are certain loading is finished and there's no error.
+                    if (bookViewModel.isLoading.value == false && errorGroup.visibility == View.GONE) {
+                        // Also check that we are not in the middle of a search that has no results
+                        val searchItem = optionsMenu?.findItem(R.id.action_search)
+                        val searchView = searchItem?.actionView as? SearchView
+                        val isSearching = searchView != null && !searchView.isIconified && !searchView.query.isNullOrEmpty()
+                        if (!isSearching) showNoResultsView(getString(R.string.no_chapters_found))
+                    }
                 }
             }
         }
@@ -569,18 +574,12 @@ class MainActivity : AppCompatActivity() {
                     lottieAnimationView.cancelAnimation()
                 }
                 rvDownloadedChapterHeadings.visibility = View.GONE // Hide progress list
-                if (chapterAdapter.itemCount == 0 && errorGroup.visibility == View.GONE) {
-                    showNoResultsView(getString(R.string.no_chapters_found))
-                } else {
-                    hideNoResultsView()
-                }
+                // The logic to show/hide "no results" is now primarily handled by the chapters observer,
+                // which is the source of truth. This prevents a flicker when loading finishes.
                 // When loading is finished, ensure the main content or error is visible.
-                if (bookViewModel.error.value == null) {
-                    // If there's no error, the chapters list should be visible (even if empty).
+                if (bookViewModel.error.value == null && chapterAdapter.itemCount > 0) {
                     recyclerViewChapters.visibility = View.VISIBLE
                 }
-                // Optionally clear tvLoadingStatus or set to an idle message if desired
-                // tvLoadingStatus.text = ""
             }
         }
         setupRetryButton()
@@ -608,13 +607,7 @@ class MainActivity : AppCompatActivity() {
                 loadingGroup.visibility = View.GONE
                 Log.e("MainActivity", "Error observed: $it. Showing error screen.")
             } ?: run {
-                // This block runs when the error message is null (i.e., cleared).
                 errorGroup.visibility = View.GONE
-                if (chapterAdapter.itemCount == 0) {
-                    showNoResultsView(getString(R.string.no_chapters_found))
-                } else {
-                    hideNoResultsView()
-                }
                 Log.d("MainActivity", "Error cleared. Hiding error screen.")
             }
         }

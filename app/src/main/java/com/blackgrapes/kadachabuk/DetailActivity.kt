@@ -1,6 +1,7 @@
 package com.blackgrapes.kadachabuk
 
 import android.app.Dialog
+import android.animation.ValueAnimator
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
@@ -18,6 +19,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import android.text.Spannable
+import android.text.SpannableStringBuilder
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
 import androidx.core.content.ContextCompat // <-- IMPORT THIS
@@ -250,8 +252,11 @@ class DetailActivity : AppCompatActivity() {
                     .setTitle(title)
                     .setMessage(message)
                     .setIcon(R.drawable.ic_bookmark) // Adds a visual cue to the dialog
-                    .setPositiveButton("Resume") { dialog, _ -> // Use smoothScrollTo for an animated scroll
-                        scrollView.post { scrollView.smoothScrollTo(0, savedScrollY) } 
+                    .setPositiveButton("Resume") { dialog, _ ->
+                        scrollView.post {
+                            scrollView.smoothScrollTo(0, savedScrollY)
+                            highlightLineAt(savedScrollY) // Add the highlight animation
+                        }
                         dialog.dismiss()
                     }
                     .setNegativeButton("Start Over") { dialog, _ ->
@@ -273,6 +278,36 @@ class DetailActivity : AppCompatActivity() {
             else -> "Welcome Back!" // Fallback
         }
         return Pair(title, message)
+    }
+
+    private fun highlightLineAt(scrollY: Int) {
+        val layout = textViewData.layout ?: return
+
+        // Find the line number at the given scroll Y position.
+        val line = layout.getLineForVertical(scrollY)
+
+        // Get the start and end character indices for that line.
+        val lineStart = layout.getLineStart(line)
+        val lineEnd = layout.getLineEnd(line)
+
+        if (lineStart >= lineEnd) return // Nothing to highlight
+
+        val originalText = textViewData.text
+        val spannable = SpannableStringBuilder(originalText)
+
+        // Create a ValueAnimator to fade the highlight color
+        val animator = ValueAnimator.ofArgb(
+            ContextCompat.getColor(this, R.color.highlight_color),
+            ContextCompat.getColor(this, android.R.color.transparent)
+        )
+        animator.duration = 2000 // 2 seconds
+        animator.addUpdateListener { animation ->
+            val color = animation.animatedValue as Int
+            val highlightSpan = BackgroundColorSpan(color)
+            spannable.setSpan(highlightSpan, lineStart, lineEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            textViewData.text = spannable
+        }
+        animator.start()
     }
 
     override fun onPause() {

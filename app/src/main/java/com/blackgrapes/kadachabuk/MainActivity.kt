@@ -557,6 +557,10 @@ class MainActivity : AppCompatActivity() {
             // The search icon is part of the SearchView, so we can't just set its icon alpha. Disabling the item is sufficient.
             optionsMenu?.findItem(R.id.action_overflow)?.icon?.alpha = alpha
 
+            // Disable the bookmark FAB during loading to prevent interaction.
+            fabBookmarks.isEnabled = !isLoading
+            fabBookmarks.alpha = if (isLoading) 0.5f else 1.0f
+
             if (isLoading) {
                 if (tvLoadingStatus.text.isNullOrEmpty() || bookViewModel.loadingStatusMessage.value.isNullOrEmpty()) {
                     tvLoadingStatus.text = getString(R.string.loading_status_default)

@@ -93,6 +93,11 @@ class MainActivity : AppCompatActivity() {
         // Make the status bar transparent to show the AppBarLayout's color underneath
         window.statusBarColor = android.graphics.Color.TRANSPARENT
 
+        // Adjust system icon colors based on the current theme (light/dark)
+        val controller = ViewCompat.getWindowInsetsController(window.decorView)
+        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        controller?.isAppearanceLightStatusBars = !isNightMode
+
 
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)

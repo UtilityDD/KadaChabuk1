@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.content.res.Configuration
 import android.view.View
 import android.view.animation.AnimationUtils
 import android.widget.TextView
@@ -28,6 +29,11 @@ class CoverActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         // Make the status bar transparent to show the background color underneath
         window.statusBarColor = android.graphics.Color.TRANSPARENT
+
+        // Adjust system icon colors based on the current theme (light/dark)
+        val controller = ViewCompat.getWindowInsetsController(window.decorView)
+        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        controller?.isAppearanceLightStatusBars = !isNightMode
 
         coverLayout = findViewById(R.id.cover_layout)
         tapToOpenText = findViewById(R.id.textView)

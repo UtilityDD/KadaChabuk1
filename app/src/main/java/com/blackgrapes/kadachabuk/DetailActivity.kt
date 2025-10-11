@@ -174,14 +174,23 @@ class DetailActivity : AppCompatActivity() {
 
                 customActionMenu?.let {
                     // Position the menu above the selected text line.
-                    // We subtract its height to place it correctly.
-                    it.translationY = (yPos - it.height - 16).toFloat() // 16px margin
+                    val finalY = (yPos - it.height - 16).toFloat() // 16px margin
+
+                    // Set initial state for animation: slightly lower and invisible
+                    it.translationY = finalY + 20f // Start 20px lower
+                    it.alpha = 0f
                     it.visibility = View.VISIBLE
+
+                    // Animate to final state: fade in and slide up
+                    it.animate()
+                        .translationY(finalY)
+                        .alpha(1f)
+                        .setDuration(150) // A short, subtle duration
+                        .start()
                 }
             } else {
                 customActionMenu?.visibility = View.VISIBLE // Fallback to top if layout is null
             }
-            // Show our custom menu
             setupCustomMenuClickListeners(mode)
 
             // Tint single-color icons white to make them visible on the new dark background
@@ -205,11 +214,17 @@ class DetailActivity : AppCompatActivity() {
         }
 
         override fun onDestroyActionMode(mode: ActionMode?) {
-            // Hide our custom menu when selection is cleared
-            customActionMenu?.visibility = View.GONE
-            // Clear the tint when the menu is hidden to reset the icons
-            customActionMenu?.findViewById<ImageButton>(R.id.action_copy)?.clearColorFilter()
-            customActionMenu?.findViewById<ImageButton>(R.id.action_keep_notes)?.clearColorFilter()
+            // Animate the menu out (fade out)
+            customActionMenu?.animate()
+                ?.alpha(0f)
+                ?.setDuration(150)
+                ?.withEndAction {
+                    // After animation, hide the view and clear tints
+                    customActionMenu?.visibility = View.GONE
+                    customActionMenu?.findViewById<ImageButton>(R.id.action_copy)?.clearColorFilter()
+                    customActionMenu?.findViewById<ImageButton>(R.id.action_keep_notes)?.clearColorFilter()
+                }
+                ?.start()
         }
     }
 

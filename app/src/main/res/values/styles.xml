@@ -4,4 +4,17 @@
         <item name="android:windowEnterAnimation">@android:anim/fade_in</item>
         <item name="android:windowExitAnimation">@android:anim/fade_out</item>
     </style>
+
+    <!-- Custom Style for the Text Selection Action Mode Toolbar -->
+    <style name="CustomActionModeStyle" parent="Widget.AppCompat.ActionMode">
+        <!-- This forces the background of the toolbar to be a specific color.
+             Using a color from the theme ensures it fits with the app. -->
+        <item name="background">@color/design_default_color_primary_dark</item>
+    </style>
+
+    <!-- This style will be applied to the app theme to use our custom ActionMode style. -->
+    <style name="AppTheme.ActionMode" parent="Theme.KadaChabuk">
+        <item name="windowActionModeOverlay">true</item>
+        <item name="actionModeStyle">@style/CustomActionModeStyle</item>
+    </style>
 </resources>

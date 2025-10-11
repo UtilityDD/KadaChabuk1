@@ -1,10 +1,14 @@
 package com.blackgrapes.kadachabuk
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.app.Dialog
 import android.animation.ValueAnimator
 import android.content.Context
 import android.os.Build
+import android.graphics.Color // <-- IMPORT THIS
 import android.os.Bundle
+import android.view.ActionMode
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -14,6 +18,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.ImageButton
 import android.widget.ImageView // <-- IMPORT THIS
+import android.util.TypedValue
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -60,6 +65,7 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var nextMatchButton: ImageButton
     private lateinit var matchCountTextView: TextView
 
+    private var customActionMenu: View? = null
     private val matchIndices = mutableListOf<Int>()
     private var currentMatchIndex = -1
 
@@ -107,6 +113,7 @@ class DetailActivity : AppCompatActivity() {
         previousMatchButton = findViewById(R.id.button_previous_match)
         nextMatchButton = findViewById(R.id.button_next_match)
         matchCountTextView = findViewById(R.id.text_view_match_count)
+        customActionMenu = findViewById(R.id.custom_action_menu)
 
 
         val heading = intent.getStringExtra("EXTRA_HEADING")
@@ -133,19 +140,8 @@ class DetailActivity : AppCompatActivity() {
         // Enable text selection
         textViewData.setTextIsSelectable(true)
 
-        // Set long click listener for sharing selected text
-        textViewData.setOnLongClickListener {
-            if (textViewData.hasSelection()) {
-                shareSelectedText()
-                return@setOnLongClickListener true
-            }
-            false
-        }
-
-//        textViewData.setOnLongClickListener {
-//            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(textViewData, InputMethodManager.SHOW_IMPLICIT)
-//            true // Return true to indicate that the long click is handled
-//        }
+        // Set custom action mode callback for text selection
+        textViewData.customSelectionActionModeCallback = customActionModeCallback
         
         backButton.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
@@ -163,6 +159,76 @@ class DetailActivity : AppCompatActivity() {
         // Set a random header image
         setRandomHeaderImage()
     }
+
+    private val customActionModeCallback = object : ActionMode.Callback {
+        override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
+            // Show our custom menu
+            customActionMenu?.visibility = View.VISIBLE
+            setupCustomMenuClickListeners(mode)
+            // Prevent the default menu from showing
+            menu?.clear()
+            return true // We've handled it
+        }
+
+        override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean {
+            // Again, prevent the default menu
+            menu?.clear()
+            return true // IMPORTANT: Return true to keep the action mode alive.
+        }
+
+        override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
+            // This will not be called because we are not using the default menu items
+            return false
+        }
+
+        override fun onDestroyActionMode(mode: ActionMode?) {
+            // Hide our custom menu when selection is cleared
+            customActionMenu?.visibility = View.GONE
+        }
+    }
+
+    private fun setupCustomMenuClickListeners(mode: ActionMode?) {
+        val selectedText = { getSelectedText() }
+
+        customActionMenu?.findViewById<ImageButton>(R.id.action_copy)?.setOnClickListener {
+            copyToClipboard(selectedText())
+            Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+            mode?.finish()
+        }
+
+        customActionMenu?.findViewById<ImageButton>(R.id.action_share_whatsapp)?.setOnClickListener {
+            shareToApp(selectedText(), "com.whatsapp")
+            mode?.finish()
+        }
+
+        customActionMenu?.findViewById<ImageButton>(R.id.action_share_facebook)?.setOnClickListener {
+            shareToApp(selectedText(), "com.facebook.katana")
+            mode?.finish()
+        }
+
+        customActionMenu?.findViewById<ImageButton>(R.id.action_keep_notes)?.setOnClickListener {
+            // Assuming "Keep Notes" means sharing to Google Keep
+            shareToApp(selectedText(), "com.google.android.keep")
+            mode?.finish()
+        }
+    }
+
+    private fun getSelectedText(): String {
+        val startIndex = textViewData.selectionStart
+        val endIndex = textViewData.selectionEnd
+        return if (startIndex != -1 && endIndex != -1 && startIndex < endIndex) {
+            textViewData.text.substring(startIndex, endIndex)
+        } else {
+            ""
+        }
+    }
+
+    private fun copyToClipboard(text: String) {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("KadaChabuk_Copy", text)
+        clipboard.setPrimaryClip(clip)
+    }
+
     override fun onResume() {
         super.onResume()
         highlightSearchTerm()
@@ -546,17 +612,19 @@ class DetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun shareSelectedText() {
-        val startIndex = textViewData.selectionStart
-        val endIndex = textViewData.selectionEnd
-
-        if (startIndex != endIndex) {
-            val selectedText = textViewData.text.substring(startIndex, endIndex)
-            ShareCompat.IntentBuilder(this)
+    private fun shareToApp(text: String, packageName: String) {
+        try {
+            val shareIntent = ShareCompat.IntentBuilder(this)
                 .setType("text/plain")
-                .setText(selectedText)
-                .setChooserTitle("Share selected text via")
-                .startChooser()
+                .setText(text)
+                .intent
+            shareIntent.setPackage(packageName)
+            startActivity(shareIntent)
+        } catch (e: Exception) {
+            Log.e("ShareError", "Could not share to $packageName", e)
+            Toast.makeText(this, "App not installed or unable to share.", Toast.LENGTH_SHORT).show()
+            // Fallback to a general share chooser if the specific app fails
+            ShareCompat.IntentBuilder(this).setType("text/plain").setText(text).startChooser()
         }
     }
 

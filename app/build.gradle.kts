@@ -77,8 +77,9 @@ dependencies {
     kapt("androidx.room:room-compiler:$roomVersion") // Annotation processor for Kotlin
     implementation("androidx.room:room-ktx:$roomVersion") // Kotlin Extensions and Coroutines support for Room
     implementation("com.squareup.retrofit2:retrofit:2.9.0") // Or latest version
-    implementation("com.squareup.retrofit2:converter-scalars:2.9.0") //
+    implementation("com.squareup.retrofit2:converter-scalars:2.9.0")
+    implementation("com.android.volley:volley:1.2.1")
+    implementation("com.squareup.picasso:picasso:2.8")
     // Optional: For Room Paging 3 support (if you plan to use it later)
     // implementation("androidx.room:room-paging:$roomVersion")
 }
-

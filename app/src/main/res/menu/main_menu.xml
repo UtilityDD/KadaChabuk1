@@ -28,6 +28,9 @@
                 android:id="@+id/action_my_notes"
                 android:title="My Notes" />
             <item
+                android:id="@+id/action_videos"
+                android:title="Video links" />
+            <item
                 android:id="@+id/action_share_app"
                 android:title="Share App" />
         </menu>

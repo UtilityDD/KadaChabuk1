@@ -16,6 +16,7 @@
     <string name="error_image_description">An illustration indicating an error has occurred.</string>
     <string name="retry_button_text">Retry</string>
     <string name="default_error_message">Something went wrong. Please try again.</string>
+    <string name="video_thumbnail">Video thumbnail</string>
 
 
     <string-array name="language_names">

@@ -34,6 +34,9 @@
         <activity
             android:name=".MyNotesActivity"
             android:exported="false" />
+        <activity
+            android:name=".VideoActivity"
+            android:label="Video Links" />
     </application>
 
 </manifest>

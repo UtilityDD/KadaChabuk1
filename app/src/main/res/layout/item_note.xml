@@ -31,8 +31,8 @@
             android:contentDescription="Share note"
             android:src="@drawable/ic_share"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/button_delete_note"
-            app:tint="?attr/colorOnSurfaceVariant" />
+            app:layout_constraintEnd_toStartOf="@id/button_delete_note" 
+            app:tint="#4CAF50" />
 
         <ImageButton
             android:id="@+id/button_delete_note"

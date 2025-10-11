@@ -30,7 +30,10 @@
 
         <activity
             android:name=".DetailActivity"
-            android:label="Chapter Details" /> <!-- You can set a default label or use @string resource -->
+            android:label="Chapter Details" />
+        <activity
+            android:name=".MyNotesActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

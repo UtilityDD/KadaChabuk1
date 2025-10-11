@@ -1,5 +1,6 @@
 package com.blackgrapes.kadachabuk
 
+import android.content.Intent
 import android.app.Dialog
 import android.database.MatrixCursor
 import android.provider.BaseColumns
@@ -491,6 +492,10 @@ class MainActivity : AppCompatActivity() {
             }
             R.id.action_share_app -> {
                 shareApp()
+                true
+            }
+            R.id.action_my_notes -> {
+                startActivity(Intent(this, MyNotesActivity::class.java))
                 true
             }
             else -> super.onOptionsItemSelected(item)

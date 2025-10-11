@@ -48,6 +48,8 @@ private const val KEY_FONT_SIZE = "fontSize"
 private const val DEFAULT_FONT_SIZE = 18f
 private const val BOOKMARK_PREFS = "BookmarkPrefs"
 private const val SCROLL_PREFS = "ScrollPositions"
+private const val NOTES_PREFS = "MyNotesPrefs"
+private const val KEY_NOTES = "notes"
 
 class DetailActivity : AppCompatActivity() {
 
@@ -260,10 +262,21 @@ class DetailActivity : AppCompatActivity() {
         customActionMenu?.findViewById<ImageButton>(R.id.action_keep_notes)?.setOnClickListener {
             val rawSelectedText = getSelectedText()
             if (rawSelectedText.isNotEmpty()) {
-                val textToShare = getFormattedTextForAction(rawSelectedText)
-                shareToApp(textToShare, "com.google.android.keep")
+                val textToSave = getFormattedTextForAction(rawSelectedText)
+                saveNote(textToSave)
+                Toast.makeText(this, "Note saved", Toast.LENGTH_SHORT).show()
             }
             mode?.finish()
+        }
+    }
+
+    private fun saveNote(note: String) {
+        val prefs = getSharedPreferences(NOTES_PREFS, Context.MODE_PRIVATE)
+        val existingNotes = prefs.getStringSet(KEY_NOTES, emptySet())?.toMutableSet() ?: mutableSetOf()
+        existingNotes.add(note)
+        with(prefs.edit()) {
+            putStringSet(KEY_NOTES, existingNotes)
+            apply()
         }
     }
 

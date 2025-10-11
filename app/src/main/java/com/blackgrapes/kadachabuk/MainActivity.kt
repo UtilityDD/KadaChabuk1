@@ -403,6 +403,11 @@ class MainActivity : AppCompatActivity() {
     private fun filter(text: String?) {
         val query = text?.lowercase()?.trim()
 
+        // Disable the bookmark FAB during a search to prevent conflicting states.
+        val isSearching = !query.isNullOrEmpty()
+        fabBookmarks.isEnabled = !isSearching
+        fabBookmarks.alpha = if (isSearching) 0.5f else 1.0f
+
         uiScope.launch {
             // If the search query is empty, restore the original adapter and hide search UI.
             if (query.isNullOrEmpty()) {

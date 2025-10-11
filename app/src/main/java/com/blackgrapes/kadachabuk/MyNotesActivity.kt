@@ -3,6 +3,7 @@ package com.blackgrapes.kadachabuk
 import android.content.Context
 import androidx.core.app.ShareCompat
 import android.os.Bundle
+import android.content.res.Configuration
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ImageButton
@@ -34,6 +35,11 @@ class MyNotesActivity : AppCompatActivity() {
 
         // Allow content to draw behind the system bars
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        // Adjust system icon colors based on the current theme (light/dark)
+        val controller = ViewCompat.getWindowInsetsController(window.decorView)
+        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        controller?.isAppearanceLightStatusBars = !isNightMode
 
         toolbar = findViewById(R.id.toolbar_notes)
         ViewCompat.setOnApplyWindowInsetsListener(toolbar) { view, windowInsets ->

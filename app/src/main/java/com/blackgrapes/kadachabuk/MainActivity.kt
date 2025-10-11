@@ -117,21 +117,16 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Sets the status bar icon color (light/dark) to match the AppBar's icon color.
-     * This is done by checking the luminance of the `colorOnPrimary` theme attribute.
+     * This is done by checking if the app is currently in night mode.
      */
     private fun setStatusBarIconColor() {
         ViewCompat.getWindowInsetsController(window.decorView)?.let { controller ->
-            // Get the AppBar's icon color from the current theme
-            val typedValue = TypedValue()
-           // theme.resolveAttribute(com.google.android.material.R.attr.colorOnPrimary, typedValue, true)
-            val colorOnPrimary = typedValue.data
-
-            // Check if the icon color is light or dark
-            val isIconColorLight = ColorUtils.calculateLuminance(colorOnPrimary) > 0.5
+            val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
             // isAppearanceLightStatusBars = true means DARK icons
             // isAppearanceLightStatusBars = false means LIGHT icons
-            controller.isAppearanceLightStatusBars = !isIconColorLight
+            // In dark theme (isNightMode), we want dark icons.
+            controller.isAppearanceLightStatusBars = isNightMode
         }
     }
 

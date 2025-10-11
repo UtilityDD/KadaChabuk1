@@ -162,9 +162,30 @@ class DetailActivity : AppCompatActivity() {
 
     private val customActionModeCallback = object : ActionMode.Callback {
         override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
+            // Calculate the position to show the menu
+            val layout = textViewData.layout
+            if (layout != null) {
+                val startSelection = textViewData.selectionStart
+                val line = layout.getLineForOffset(startSelection)
+                // Y position is the top of the line of text, minus the scroll position, plus the TextView's top margin.
+                val yPos = layout.getLineTop(line) - scrollView.scrollY + textViewData.top
+
+                customActionMenu?.let {
+                    // Position the menu above the selected text line.
+                    // We subtract its height to place it correctly.
+                    it.translationY = (yPos - it.height - 16).toFloat() // 16px margin
+                    it.visibility = View.VISIBLE
+                }
+            } else {
+                customActionMenu?.visibility = View.VISIBLE // Fallback to top if layout is null
+            }
             // Show our custom menu
-            customActionMenu?.visibility = View.VISIBLE
             setupCustomMenuClickListeners(mode)
+
+            // Tint single-color icons white to make them visible on the new dark background
+            customActionMenu?.findViewById<ImageButton>(R.id.action_copy)?.setColorFilter(Color.WHITE)
+            customActionMenu?.findViewById<ImageButton>(R.id.action_keep_notes)?.setColorFilter(Color.WHITE)
+
             // Prevent the default menu from showing
             menu?.clear()
             return true // We've handled it
@@ -184,6 +205,9 @@ class DetailActivity : AppCompatActivity() {
         override fun onDestroyActionMode(mode: ActionMode?) {
             // Hide our custom menu when selection is cleared
             customActionMenu?.visibility = View.GONE
+            // Clear the tint when the menu is hidden to reset the icons
+            customActionMenu?.findViewById<ImageButton>(R.id.action_copy)?.clearColorFilter()
+            customActionMenu?.findViewById<ImageButton>(R.id.action_keep_notes)?.clearColorFilter()
         }
     }
 

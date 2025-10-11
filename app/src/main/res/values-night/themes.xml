@@ -19,7 +19,15 @@
         <item name="colorOnSurfaceVariant">@color/dark_onSurfaceVariant</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorSurfaceContainerHighest</item>
+
+        <item name="searchViewStyle">@style/App.Widget.SearchView</item>
     </style>
 
     <style name="Theme.KadaChabuk" parent="Base.Theme.KadaChabuk" />
+
+    <style name="App.Widget.SearchView" parent="Widget.AppCompat.SearchView">
+        <item name="editTextColor">@color/light_onSurface</item> <!-- Black -->
+        <item name="android:textColorHint">#B3000000</item> <!-- Semi-transparent black for hint -->
+    </style>
+
 </resources>

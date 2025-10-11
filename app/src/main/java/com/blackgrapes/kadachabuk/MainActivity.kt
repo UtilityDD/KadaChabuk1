@@ -121,7 +121,7 @@ class MainActivity : AppCompatActivity() {
         ViewCompat.getWindowInsetsController(window.decorView)?.let { controller ->
             // Get the AppBar's icon color from the current theme
             val typedValue = TypedValue()
-            theme.resolveAttribute(com.google.android.material.R.attr.colorOnPrimary, typedValue, true)
+           // theme.resolveAttribute(com.google.android.material.R.attr.colorOnPrimary, typedValue, true)
             val colorOnPrimary = typedValue.data
 
             // Check if the icon color is light or dark

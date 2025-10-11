@@ -10,6 +10,9 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.appbar.MaterialToolbar
 
@@ -26,7 +29,17 @@ class MyNotesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_my_notes)
 
+        // Allow content to draw behind the system bars
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar_notes)
+        ViewCompat.setOnApplyWindowInsetsListener(toolbar) { view, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            // Apply the top inset as padding to push the toolbar's content down, without changing its height
+            view.setPadding(view.paddingLeft, insets.top, view.paddingRight, 0)
+            windowInsets
+        }
+
         recyclerView = findViewById(R.id.recycler_view_notes)
         noNotesTextView = findViewById(R.id.text_view_no_notes)
 

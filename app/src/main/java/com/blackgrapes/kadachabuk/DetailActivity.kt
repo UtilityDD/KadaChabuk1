@@ -4,6 +4,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.app.Dialog
 import android.animation.ValueAnimator
+import android.net.Uri
+import android.content.Intent
 import android.content.Context
 import android.os.Build
 import android.graphics.Color // <-- IMPORT THIS
@@ -195,9 +197,7 @@ class DetailActivity : AppCompatActivity() {
             }
             setupCustomMenuClickListeners(mode)
 
-            // Tint single-color icons white to make them visible on the new dark background
-            customActionMenu?.findViewById<ImageButton>(R.id.action_copy)?.setColorFilter(Color.WHITE)
-            customActionMenu?.findViewById<ImageButton>(R.id.action_keep_notes)?.setColorFilter(Color.WHITE)
+            // Do not tint any icons to preserve their original colors.
 
             // Prevent the default menu from showing
             menu?.clear()
@@ -223,8 +223,7 @@ class DetailActivity : AppCompatActivity() {
                 ?.withEndAction {
                     // After animation, hide the view and clear tints
                     customActionMenu?.visibility = View.GONE
-                    customActionMenu?.findViewById<ImageButton>(R.id.action_copy)?.clearColorFilter()
-                    customActionMenu?.findViewById<ImageButton>(R.id.action_keep_notes)?.clearColorFilter()
+                    // No need to clear filters as none are applied.
                 }
                 ?.start()
         }
@@ -265,6 +264,29 @@ class DetailActivity : AppCompatActivity() {
                 val textToSave = getFormattedTextForAction(rawSelectedText)
                 saveNote(textToSave)
                 Toast.makeText(this, "Note saved", Toast.LENGTH_SHORT).show()
+            }
+            mode?.finish()
+        }
+
+        customActionMenu?.findViewById<ImageButton>(R.id.action_report_error)?.setOnClickListener {
+            val rawSelectedText = getSelectedText()
+            if (rawSelectedText.isNotEmpty()) {
+                val textToReport = getFormattedTextForAction(rawSelectedText)
+                val subject = "I found an error!"
+                val body = "Please rectify the errors in spelling etc. in the following lines:\n\n\"$textToReport\"\n\n[Corrected lines are: write corrected lines here]"
+
+                // For ACTION_SENDTO, subject and body must be part of the mailto URI.
+                val uriText = "mailto:kadachabuk@gmail.com" +
+                        "?subject=" + Uri.encode(subject) +
+                        "&body=" + Uri.encode(body)
+                val mailtoUri = Uri.parse(uriText)
+
+                val emailIntent = Intent(Intent.ACTION_SENDTO, mailtoUri)
+                try {
+                    startActivity(emailIntent)
+                } catch (ex: android.content.ActivityNotFoundException) {
+                    Toast.makeText(this, "There are no email clients installed.", Toast.LENGTH_SHORT).show()
+                }
             }
             mode?.finish()
         }

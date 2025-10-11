@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.content.res.Configuration
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.LinearLayout
 import android.widget.ImageButton
 import android.view.ViewGroup
 import android.widget.TextView
@@ -132,15 +133,49 @@ class NoteAdapter(
     private val onShareClick: (String) -> Unit
 ) : RecyclerView.Adapter<NoteAdapter.NoteViewHolder>() {
 
-    class NoteViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val noteContent: TextView = view.findViewById(R.id.text_view_note_content)
-        val shareButton: ImageButton = view.findViewById(R.id.button_share_note)
-        val deleteButton: ImageButton = view.findViewById(R.id.button_delete_note)
+    class NoteViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
+        lateinit var noteContent: TextView
+        lateinit var shareButton: ImageButton
+        lateinit var deleteButton: ImageButton
+
+        init {
+            // Check if the item view is a ViewGroup to add our button layout
+            if (view is ViewGroup) {
+                noteContent = view.findViewById(R.id.text_view_note_content)
+
+                // Programmatically create a horizontal LinearLayout for the buttons
+                val buttonLayout = LinearLayout(view.context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.END
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                }
+
+                // Inflate the buttons and add them to our new layout
+                shareButton = LayoutInflater.from(view.context)
+                    .inflate(R.layout.item_note, null)
+                    .findViewById(R.id.button_share_note)
+                deleteButton = LayoutInflater.from(view.context)
+                    .inflate(R.layout.item_note, null)
+                    .findViewById(R.id.button_delete_note)
+
+                (shareButton.parent as? ViewGroup)?.removeView(shareButton)
+                (deleteButton.parent as? ViewGroup)?.removeView(deleteButton)
+
+                buttonLayout.addView(shareButton)
+                buttonLayout.addView(deleteButton)
+
+                // Add the button layout to the main item view
+                view.addView(buttonLayout)
+            }
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NoteViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_note, parent, false)
+            .inflate(R.layout.item_note_base, parent, false)
         return NoteViewHolder(view)
     }
 

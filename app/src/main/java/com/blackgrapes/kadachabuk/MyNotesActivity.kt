@@ -25,6 +25,8 @@ class MyNotesActivity : AppCompatActivity() {
     private lateinit var noNotesTextView: TextView
     private lateinit var noteAdapter: NoteAdapter
     private lateinit var notes: MutableList<String>
+    private lateinit var toolbar: MaterialToolbar
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_my_notes)
@@ -32,7 +34,7 @@ class MyNotesActivity : AppCompatActivity() {
         // Allow content to draw behind the system bars
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        val toolbar: MaterialToolbar = findViewById(R.id.toolbar_notes)
+        toolbar = findViewById(R.id.toolbar_notes)
         ViewCompat.setOnApplyWindowInsetsListener(toolbar) { view, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
             // Apply the top inset as padding to push the toolbar's content down, without changing its height
@@ -48,6 +50,7 @@ class MyNotesActivity : AppCompatActivity() {
         }
 
         notes = getSavedNotes().toMutableList()
+        updateTitle()
         noteAdapter = NoteAdapter(notes) { note, position ->
             showDeleteConfirmationDialog(note, position)
         }
@@ -56,6 +59,10 @@ class MyNotesActivity : AppCompatActivity() {
         recyclerView.adapter = noteAdapter
 
         updateEmptyState()
+    }
+
+    private fun updateTitle() {
+        toolbar.title = "My Notes (${notes.size})"
     }
 
     private fun getSavedNotes(): List<String> {
@@ -87,6 +94,7 @@ class MyNotesActivity : AppCompatActivity() {
         noteAdapter.notifyItemRemoved(position)
 
         updateEmptyState()
+        updateTitle()
     }
 
     private fun updateEmptyState() {

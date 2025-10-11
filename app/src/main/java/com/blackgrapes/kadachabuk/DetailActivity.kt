@@ -65,6 +65,8 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var nextMatchButton: ImageButton
     private lateinit var matchCountTextView: TextView
 
+    private var chapterHeading: String? = null
+    private var chapterDate: String? = null
     private var customActionMenu: View? = null
     private val matchIndices = mutableListOf<Int>()
     private var currentMatchIndex = -1
@@ -116,17 +118,17 @@ class DetailActivity : AppCompatActivity() {
         customActionMenu = findViewById(R.id.custom_action_menu)
 
 
-        val heading = intent.getStringExtra("EXTRA_HEADING")
-        val date = intent.getStringExtra("EXTRA_DATE")
+        chapterHeading = intent.getStringExtra("EXTRA_HEADING")
+        chapterDate = intent.getStringExtra("EXTRA_DATE")
         val dataContent = intent.getStringExtra("EXTRA_DATA")
         val writer = intent.getStringExtra("EXTRA_WRITER")
         chapterSerial = intent.getStringExtra("EXTRA_SERIAL") ?: ""
         languageCode = intent.getStringExtra("EXTRA_LANGUAGE_CODE") ?: ""
 
-        textViewHeading.text = heading
-        textViewDate.text = date?.removeSurrounding("(", ")")
+        textViewHeading.text = chapterHeading
+        textViewDate.text = chapterDate?.removeSurrounding("(", ")")
         textViewData.text = dataContent
-        title = heading ?: "Details"
+        title = chapterHeading ?: "Details"
 
         loadAndApplyFontSize()
         textViewWriter.text = writer
@@ -212,29 +214,49 @@ class DetailActivity : AppCompatActivity() {
     }
 
     private fun setupCustomMenuClickListeners(mode: ActionMode?) {
-        val selectedText = { getSelectedText() }
-
         customActionMenu?.findViewById<ImageButton>(R.id.action_copy)?.setOnClickListener {
-            copyToClipboard(selectedText())
-            Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+            val rawSelectedText = getSelectedText()
+            if (rawSelectedText.isNotEmpty()) {
+                val textToShare = getFormattedTextForAction(rawSelectedText)
+                copyToClipboard(textToShare)
+                Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+            }
             mode?.finish()
         }
 
         customActionMenu?.findViewById<ImageButton>(R.id.action_share_whatsapp)?.setOnClickListener {
-            shareToApp(selectedText(), "com.whatsapp")
+            val rawSelectedText = getSelectedText()
+            if (rawSelectedText.isNotEmpty()) {
+                val textToShare = getFormattedTextForAction(rawSelectedText)
+                shareToApp(textToShare, "com.whatsapp")
+            }
             mode?.finish()
         }
 
         customActionMenu?.findViewById<ImageButton>(R.id.action_share_facebook)?.setOnClickListener {
-            shareToApp(selectedText(), "com.facebook.katana")
+            val rawSelectedText = getSelectedText()
+            if (rawSelectedText.isNotEmpty()) {
+                val textToShare = getFormattedTextForAction(rawSelectedText)
+                shareToApp(textToShare, "com.facebook.katana")
+            }
             mode?.finish()
         }
 
         customActionMenu?.findViewById<ImageButton>(R.id.action_keep_notes)?.setOnClickListener {
-            // Assuming "Keep Notes" means sharing to Google Keep
-            shareToApp(selectedText(), "com.google.android.keep")
+            val rawSelectedText = getSelectedText()
+            if (rawSelectedText.isNotEmpty()) {
+                val textToShare = getFormattedTextForAction(rawSelectedText)
+                shareToApp(textToShare, "com.google.android.keep")
+            }
             mode?.finish()
         }
+    }
+
+    private fun getFormattedTextForAction(selectedText: String): String {
+        val header = chapterHeading ?: ""
+        val date = chapterDate?.removeSurrounding("(", ")") ?: ""
+        val attribution = "\n\n[${header}, ${date}]"
+        return "$selectedText$attribution"
     }
 
     private fun getSelectedText(): String {

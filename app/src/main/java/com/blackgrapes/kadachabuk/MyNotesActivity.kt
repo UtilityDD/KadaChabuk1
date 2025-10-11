@@ -1,6 +1,7 @@
 package com.blackgrapes.kadachabuk
 
 import android.content.Context
+import androidx.core.app.ShareCompat
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -51,9 +52,13 @@ class MyNotesActivity : AppCompatActivity() {
 
         notes = getSavedNotes().toMutableList()
         updateTitle()
-        noteAdapter = NoteAdapter(notes) { note, position ->
-            showDeleteConfirmationDialog(note, position)
-        }
+        noteAdapter = NoteAdapter(
+            notes,
+            onDeleteClick = { note, position ->
+                showDeleteConfirmationDialog(note, position)
+            },
+            onShareClick = { note -> shareNote(note) }
+        )
 
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = noteAdapter
@@ -63,6 +68,13 @@ class MyNotesActivity : AppCompatActivity() {
 
     private fun updateTitle() {
         toolbar.title = "My Notes (${notes.size})"
+    }
+
+    private fun shareNote(noteText: String) {
+        ShareCompat.IntentBuilder(this)
+            .setType("text/plain")
+            .setText(noteText)
+            .startChooser()
     }
 
     private fun getSavedNotes(): List<String> {
@@ -110,11 +122,13 @@ class MyNotesActivity : AppCompatActivity() {
 
 class NoteAdapter(
     private val notes: List<String>,
-    private val onDeleteClick: (String, Int) -> Unit
+    private val onDeleteClick: (String, Int) -> Unit,
+    private val onShareClick: (String) -> Unit
 ) : RecyclerView.Adapter<NoteAdapter.NoteViewHolder>() {
 
     class NoteViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val noteContent: TextView = view.findViewById(R.id.text_view_note_content)
+        val shareButton: ImageButton = view.findViewById(R.id.button_share_note)
         val deleteButton: ImageButton = view.findViewById(R.id.button_delete_note)
     }
 
@@ -127,6 +141,7 @@ class NoteAdapter(
     override fun onBindViewHolder(holder: NoteViewHolder, position: Int) {
         val note = notes[position]
         holder.noteContent.text = note
+        holder.shareButton.setOnClickListener { onShareClick(note) }
         holder.deleteButton.setOnClickListener { onDeleteClick(note, holder.adapterPosition) }
     }
 

@@ -24,6 +24,17 @@
             tools:text="This is a sample note content that the user has saved.\n\n[Chapter Title, January 1, 2024]" />
 
         <ImageButton
+            android:id="@+id/button_share_note"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Share note"
+            android:src="@drawable/ic_share"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/button_delete_note"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+        <ImageButton
             android:id="@+id/button_delete_note"
             android:layout_width="48dp"
             android:layout_height="48dp"

@@ -178,4 +178,33 @@
         app:layout_constraintStart_toStartOf="parent"
         tools:visibility="visible" />
         
+    <!-- Reading History Overlay (Initially Hidden) -->
+    <LinearLayout
+        android:id="@+id/reading_history_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:alpha="0" 
+        android:background="@drawable/reading_history_background"
+        android:elevation="8dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/search_navigation_layout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:alpha="1"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/text_view_reading_history"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            tools:text="You are reading this chapter for 3 times, total reading time 1 H, 25 m" />
+
+    </LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

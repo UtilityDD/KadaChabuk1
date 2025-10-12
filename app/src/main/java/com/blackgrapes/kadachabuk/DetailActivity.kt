@@ -6,6 +6,7 @@ import android.app.Dialog
 import android.animation.ValueAnimator
 import android.net.Uri
 import android.content.Intent
+import android.view.LayoutInflater
 import android.content.Context
 import android.os.Build
 import android.graphics.Color // <-- IMPORT THIS
@@ -34,6 +35,10 @@ import androidx.core.app.ShareCompat
 import android.widget.Toast
 import android.util.Log
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import androidx.core.view.updatePadding
 import androidx.core.text.HtmlCompat
@@ -52,6 +57,7 @@ private const val DEFAULT_FONT_SIZE = 18f
 private const val BOOKMARK_PREFS = "BookmarkPrefs"
 private const val SCROLL_PREFS = "ScrollPositions"
 private const val NOTES_PREFS = "MyNotesPrefs"
+private const val HISTORY_PREFS = "ReadingHistoryPrefs"
 private const val KEY_NOTES = "notes"
 
 class DetailActivity : AppCompatActivity() {
@@ -69,12 +75,15 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var previousMatchButton: ImageButton
     private lateinit var nextMatchButton: ImageButton
     private lateinit var matchCountTextView: TextView
+    private lateinit var readingHistoryLayout: LinearLayout
+    private lateinit var readingHistoryTextView: TextView
 
     private var chapterHeading: String? = null
     private var chapterDate: String? = null
     private var customActionMenu: View? = null
     private val matchIndices = mutableListOf<Int>()
     private var previousMatchIndex = -1
+    private var sessionStartTime: Long = 0
     private var currentMatchIndex = -1
 
     // Array of your drawable resource IDs
@@ -121,6 +130,8 @@ class DetailActivity : AppCompatActivity() {
         previousMatchButton = findViewById(R.id.button_previous_match)
         nextMatchButton = findViewById(R.id.button_next_match)
         matchCountTextView = findViewById(R.id.text_view_match_count)
+        readingHistoryLayout = findViewById(R.id.reading_history_layout)
+        readingHistoryTextView = findViewById(R.id.text_view_reading_history)
         customActionMenu = findViewById(R.id.custom_action_menu)
 
 
@@ -166,6 +177,9 @@ class DetailActivity : AppCompatActivity() {
 
         // Set a random header image
         setRandomHeaderImage()
+
+        // Handle reading history tracking and display
+        setupReadingHistory()
     }
 
     private val customActionModeCallback = object : ActionMode.Callback {
@@ -336,6 +350,7 @@ class DetailActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        sessionStartTime = System.currentTimeMillis()
         highlightSearchTerm()
     }
 
@@ -420,22 +435,18 @@ class DetailActivity : AppCompatActivity() {
             val savedScrollY = sharedPreferences.getInt(scrollKey, 0)
             val savedTimestamp = sharedPreferences.getLong(timeKey, 0)
 
-            if (savedScrollY > 100 && savedTimestamp > 0) { // Only prompt if they've scrolled a bit
-                val daysDifference = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - savedTimestamp)
-                val (title, message) = getResumeDialogTexts(daysDifference)
-
+            if (savedScrollY > 100 && savedTimestamp > 0) { // Only prompt if they've scrolled a bit.
+                val customView = LayoutInflater.from(this).inflate(R.layout.dialog_resume_reading, null)
                 MaterialAlertDialogBuilder(this)
-                    .setTitle(title)
-                    .setMessage(message)
-                    .setIcon(R.drawable.ic_bookmark) // Adds a visual cue to the dialog
-                    .setPositiveButton("Resume") { dialog, _ ->
+                    .setView(customView)
+                    .setPositiveButton("Yes") { dialog, _ ->
                         scrollView.post {
                             scrollView.smoothScrollTo(0, savedScrollY)
                             highlightLineAt(savedScrollY) // Add the highlight animation
                         }
                         dialog.dismiss()
                     }
-                    .setNegativeButton("Start Over") { dialog, _ ->
+                    .setNegativeButton("No") { dialog, _ ->
                         dialog.dismiss()
                     }
                     .show()
@@ -443,17 +454,77 @@ class DetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun getResumeDialogTexts(daysSinceLastRead: Long): Pair<String, String> {
-        val message = "Ready to continue from where you left off?"
-        val title = when {
-            daysSinceLastRead < 1 -> "Picking Up Again?"
-            daysSinceLastRead == 1L -> "Welcome Back!"
-            daysSinceLastRead in 2..6 -> "It's Been a Little While!"
-            daysSinceLastRead in 7..29 -> "Dusting This One Off?"
-            daysSinceLastRead >= 30 -> "A Long-Lost Friend Returns!"
-            else -> "Welcome Back!" // Fallback
+    private fun setupReadingHistory() {
+        val historyKeyBase = getHistoryKeyBase() ?: return
+        val prefs = getSharedPreferences(HISTORY_PREFS, Context.MODE_PRIVATE)
+
+        // 1. Increment read count for this session
+        val countKey = "count_$historyKeyBase"
+        val currentCount = prefs.getInt(countKey, 0)
+        val newCount = currentCount + 1
+        prefs.edit().putInt(countKey, newCount).apply()
+
+        // 2. Load total time and format the message
+        val timeKey = "time_$historyKeyBase"
+        val totalTimeMs = prefs.getLong(timeKey, 0)
+        updateHistoryTextView(newCount, totalTimeMs)
+
+        // 3. Schedule the fade-in animation
+        CoroutineScope(Dispatchers.Main).launch {
+            delay(300000) // Wait for 5 minutes before showing
+
+            // Fade in
+            readingHistoryLayout.visibility = View.VISIBLE
+            readingHistoryLayout.animate()
+                .alpha(1f)
+                .setDuration(1000) // 1-second fade-in
+                .start()
+
+            delay(30000) // Keep it on screen for 30 seconds
+
+            // Fade out
+            readingHistoryLayout.animate()
+                .alpha(0f)
+                .setDuration(1000) // 1-second fade-out
+                .withEndAction { readingHistoryLayout.visibility = View.GONE }
+                .start()
         }
-        return Pair(title, message)
+    }
+
+    private fun saveReadingTime() {
+        val historyKeyBase = getHistoryKeyBase() ?: return
+        if (sessionStartTime == 0L) return
+
+        val sessionDuration = System.currentTimeMillis() - sessionStartTime
+        // Only save if the session was longer than 10 seconds to avoid counting brief views
+        if (sessionDuration < 10000) return
+
+        val prefs = getSharedPreferences(HISTORY_PREFS, Context.MODE_PRIVATE)
+        val timeKey = "time_$historyKeyBase"
+
+        val existingTime = prefs.getLong(timeKey, 0)
+        val newTotalTime = existingTime + sessionDuration
+
+        prefs.edit().putLong(timeKey, newTotalTime).apply()
+    }
+
+    private fun updateHistoryTextView(count: Int, totalTimeMs: Long) {
+        val hours = TimeUnit.MILLISECONDS.toHours(totalTimeMs)
+        val minutes = TimeUnit.MILLISECONDS.toMinutes(totalTimeMs) % 60
+
+        val countText = if (count == 1) "1st time" else "$count times"
+        val timeText = if (hours > 0) "$hours H, $minutes m" else "$minutes m"
+
+        readingHistoryTextView.text =
+            "You are reading this chapter for the $countText, total reading time $timeText"
+    }
+
+    private fun getHistoryKeyBase(): String? {
+        return if (::chapterSerial.isInitialized && ::languageCode.isInitialized && chapterSerial.isNotEmpty() && languageCode.isNotEmpty()) {
+            "${languageCode}_${chapterSerial}"
+        } else {
+            null
+        }
     }
 
     private fun highlightLineAt(scrollY: Int) {
@@ -488,6 +559,7 @@ class DetailActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        saveReadingTime()
         saveScrollPosition()
     }
 

@@ -665,7 +665,11 @@ class MainActivity : AppCompatActivity() {
 
         bookViewModel.aboutInfo.observe(this) { result ->
             result.onSuccess { aboutText ->
-                showAboutDialog(aboutText)
+                // Only show the dialog if it's not already being shown to prevent
+                // it from reappearing on configuration changes like theme toggles.
+                if (!bookViewModel.isAboutDialogShowing) {
+                    showAboutDialog(aboutText)
+                }
             }.onFailure {
                 // Optionally handle error, e.g., show a toast
                 Log.e("MainActivity", "Failed to get 'About' info", it)
@@ -692,6 +696,7 @@ class MainActivity : AppCompatActivity() {
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogView)
             .create()
+        bookViewModel.isAboutDialogShowing = true
 
         val scrollView = dialogView.findViewById<ScrollView>(R.id.about_scroll_view)
 
@@ -727,6 +732,7 @@ class MainActivity : AppCompatActivity() {
             if (dontShowAgainCheckbox.visibility == View.VISIBLE) {
                 aboutPrefs.edit().putBoolean("show_about_on_startup", !dontShowAgainCheckbox.isChecked).apply()
             }
+            bookViewModel.isAboutDialogShowing = false
         }
         dialog.show()
     }

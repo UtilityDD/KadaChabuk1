@@ -6,6 +6,18 @@
     android:layout_height="match_parent"
     tools:context=".DetailActivity">
 
+    <!-- Header image - moved outside the ScrollView to act as a background -->
+    <ImageView
+        android:id="@+id/imageViewHeader"
+        android:layout_width="0dp"
+        android:layout_height="200dp"
+        android:contentDescription="@string/chapter_header_image_description"
+        android:scaleType="centerCrop"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:srcCompat="@drawable/thakur1" />
+
     <ScrollView
         android:id="@+id/scrollView"
         android:layout_width="0dp"
@@ -22,14 +34,11 @@
             android:orientation="vertical"
             android:paddingBottom="16dp">
 
-            <!-- Header image -->
-            <ImageView
-                android:id="@+id/imageViewHeader"
+            <!-- Spacer to push content below the parallax image -->
+            <View
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:contentDescription="@string/chapter_header_image_description"
-                android:scaleType="centerCrop"
-                tools:srcCompat="@drawable/thakur1" />
+                android:layout_height="200dp" />
+
 
             <!-- Centered Header Text Section -->
             <TextView

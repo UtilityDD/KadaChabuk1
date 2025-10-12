@@ -180,6 +180,17 @@ class DetailActivity : AppCompatActivity() {
 
         // Handle reading history tracking and display
         setupReadingHistory()
+
+        // Add a scroll listener to fade out the header image on scroll.
+        scrollView.viewTreeObserver.addOnScrollChangedListener {
+            val scrollY = scrollView.scrollY
+            val imageHeight = imageViewHeader.height.toFloat()
+
+            // Calculate alpha: 1.0 (fully visible) at scrollY 0, to 0.0 (fully transparent)
+            // as the user scrolls past the image's height.
+            val alpha = 1.0f - (scrollY / imageHeight)
+            imageViewHeader.alpha = alpha.coerceIn(0f, 1f) // Ensure alpha stays between 0 and 1
+        }
     }
 
     private val customActionModeCallback = object : ActionMode.Callback {

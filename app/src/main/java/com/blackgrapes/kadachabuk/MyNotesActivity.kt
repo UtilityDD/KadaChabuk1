@@ -85,6 +85,7 @@ class MyNotesActivity : AppCompatActivity()  {
         recyclerView.adapter = noteAdapter
 
         updateEmptyState()
+        updateTitle()
     }
 
     private fun updateTitle() {

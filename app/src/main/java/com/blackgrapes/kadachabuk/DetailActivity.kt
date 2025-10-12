@@ -34,6 +34,7 @@ import androidx.core.app.ShareCompat
 import android.widget.Toast
 import android.util.Log
 
+import org.json.JSONObject
 import androidx.core.view.updatePadding
 import androidx.core.text.HtmlCompat
 import androidx.core.view.ViewCompat
@@ -295,8 +296,15 @@ class DetailActivity : AppCompatActivity() {
 
     private fun saveNote(note: String) {
         val prefs = getSharedPreferences(NOTES_PREFS, Context.MODE_PRIVATE)
-        val existingNotes = prefs.getStringSet(KEY_NOTES, emptySet())?.toMutableSet() ?: mutableSetOf()
-        existingNotes.add(note)
+        val existingNotes = prefs.getStringSet(KEY_NOTES, emptySet())?.toMutableSet()
+            ?: mutableSetOf()
+
+        // Create a JSON object for the new note
+        val noteObject = JSONObject()
+        noteObject.put("text", note)
+        noteObject.put("timestamp", System.currentTimeMillis())
+
+        existingNotes.add(noteObject.toString())
         with(prefs.edit()) {
             putStringSet(KEY_NOTES, existingNotes)
             apply()

@@ -18,16 +18,22 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.appbar.MaterialToolbar
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private const val NOTES_PREFS = "MyNotesPrefs"
 private const val KEY_NOTES = "notes"
 
-class MyNotesActivity : AppCompatActivity() {
+data class NoteItem(val text: String, val timestamp: Long, val originalJson: String)
+
+class MyNotesActivity : AppCompatActivity()  {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var noNotesTextView: TextView
     private lateinit var noteAdapter: NoteAdapter
-    private lateinit var notes: MutableList<String>
+    private lateinit var notes: MutableList<NoteItem>
     private lateinit var toolbar: MaterialToolbar
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,13 +64,12 @@ class MyNotesActivity : AppCompatActivity() {
         }
 
         notes = getSavedNotes().toMutableList()
-        updateTitle()
         noteAdapter = NoteAdapter(
             notes,
-            onDeleteClick = { note, position ->
-                showDeleteConfirmationDialog(note, position)
+            onDeleteClick = { noteItem, position ->
+                showDeleteConfirmationDialog(noteItem, position)
             },
-            onShareClick = { note -> shareNote(note) }
+            onShareClick = { noteItem -> shareNote(noteItem.text) }
         )
 
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -74,7 +79,7 @@ class MyNotesActivity : AppCompatActivity() {
     }
 
     private fun updateTitle() {
-        toolbar.title = "My Notes (${notes.size})"
+        toolbar.title = "My Notes (${noteAdapter.itemCount})"
     }
 
     private fun shareNote(noteText: String) {
@@ -84,28 +89,39 @@ class MyNotesActivity : AppCompatActivity() {
             .startChooser()
     }
 
-    private fun getSavedNotes(): List<String> {
+    private fun getSavedNotes(): List<NoteItem> {
         val prefs = getSharedPreferences(NOTES_PREFS, Context.MODE_PRIVATE)
-        // Retrieve the set and convert to a list, sort to keep it consistent
-        return prefs.getStringSet(KEY_NOTES, emptySet())?.toList()?.sortedDescending() ?: emptyList()
+        val notesJsonSet = prefs.getStringSet(KEY_NOTES, emptySet()) ?: emptySet()
+
+        return notesJsonSet.mapNotNull { jsonString ->
+            try {
+                val jsonObject = JSONObject(jsonString)
+                val text = jsonObject.getString("text")
+                val timestamp = jsonObject.getLong("timestamp")
+                NoteItem(text, timestamp, jsonString)
+            } catch (e: Exception) {
+                // Handle legacy plain string notes if they exist
+                NoteItem(jsonString, 0, jsonString)
+            }
+        }.sortedByDescending { it.timestamp }
     }
 
-    private fun showDeleteConfirmationDialog(note: String, position: Int) {
+    private fun showDeleteConfirmationDialog(noteItem: NoteItem, position: Int) {
         MaterialAlertDialogBuilder(this)
             .setTitle("Delete Note")
             .setMessage("Are you sure you want to delete this note?")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Delete") { _, _ ->
-                deleteNote(note, position)
+                deleteNote(noteItem, position)
             }
             .show()
     }
 
-    private fun deleteNote(note: String, position: Int) {
+    private fun deleteNote(noteItem: NoteItem, position: Int) {
         // Remove from SharedPreferences
         val prefs = getSharedPreferences(NOTES_PREFS, Context.MODE_PRIVATE)
         val existingNotes = prefs.getStringSet(KEY_NOTES, emptySet())?.toMutableSet() ?: return
-        existingNotes.remove(note)
+        existingNotes.remove(noteItem.originalJson)
         prefs.edit().putStringSet(KEY_NOTES, existingNotes).apply()
 
         // Remove from the local list and notify the adapter
@@ -128,13 +144,14 @@ class MyNotesActivity : AppCompatActivity() {
 }
 
 class NoteAdapter(
-    private val notes: List<String>,
-    private val onDeleteClick: (String, Int) -> Unit,
-    private val onShareClick: (String) -> Unit
+    private val notes: MutableList<NoteItem>,
+    private val onDeleteClick: (NoteItem, Int) -> Unit,
+    private val onShareClick: (NoteItem) -> Unit
 ) : RecyclerView.Adapter<NoteAdapter.NoteViewHolder>() {
 
     class NoteViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
         lateinit var noteContent: TextView
+        lateinit var noteDate: TextView
         lateinit var shareButton: ImageButton
         lateinit var deleteButton: ImageButton
 
@@ -142,6 +159,7 @@ class NoteAdapter(
             // Check if the item view is a ViewGroup to add our button layout
             if (view is ViewGroup) {
                 noteContent = view.findViewById(R.id.text_view_note_content)
+                noteDate = view.findViewById(R.id.text_view_note_date)
 
                 // Programmatically create a horizontal LinearLayout for the buttons
                 val buttonLayout = LinearLayout(view.context).apply {
@@ -180,10 +198,18 @@ class NoteAdapter(
     }
 
     override fun onBindViewHolder(holder: NoteViewHolder, position: Int) {
-        val note = notes[position]
-        holder.noteContent.text = note
-        holder.shareButton.setOnClickListener { onShareClick(note) }
-        holder.deleteButton.setOnClickListener { onDeleteClick(note, holder.adapterPosition) }
+        val noteItem = notes[position]
+        holder.noteContent.text = noteItem.text
+
+        if (noteItem.timestamp > 0) {
+            val sdf = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+            holder.noteDate.text = sdf.format(Date(noteItem.timestamp))
+            holder.noteDate.visibility = View.VISIBLE
+        } else {
+            holder.noteDate.visibility = View.GONE
+        }
+        holder.shareButton.setOnClickListener { onShareClick(noteItem) }
+        holder.deleteButton.setOnClickListener { onDeleteClick(noteItem, holder.adapterPosition) }
     }
 
     override fun getItemCount() = notes.size

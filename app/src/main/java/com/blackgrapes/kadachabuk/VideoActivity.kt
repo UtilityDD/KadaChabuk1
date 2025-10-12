@@ -4,14 +4,18 @@ import android.os.Bundle
 import android.content.res.Configuration
 import android.util.TypedValue
 import android.view.MenuItem
+import android.view.ViewGroup
 import android.view.View
+import android.widget.Button
 import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.constraintlayout.widget.Group
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.appbar.MaterialToolbar
 import com.android.volley.Request
@@ -28,6 +32,9 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
     private lateinit var recyclerView: RecyclerView
     private lateinit var progressBar: ProgressBar
     private lateinit var toolbar: MaterialToolbar
+    private lateinit var errorGroup: Group
+    private lateinit var errorMessageTextView: TextView
+    private lateinit var retryButton: Button
     private var videoCount = 0
     private val originalTitle by lazy { "Video Links ($videoCount)" }
 
@@ -66,6 +73,14 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
         progressBar = findViewById(R.id.progressBar)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
+        errorGroup = findViewById(R.id.error_group)
+        errorMessageTextView = findViewById(R.id.error_message)
+        retryButton = findViewById(R.id.retry_button)
+
+        retryButton.setOnClickListener {
+            fetchVideoData()
+        }
+
         fetchVideoData()
     }
 
@@ -86,6 +101,8 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
 
     private fun fetchVideoData() {
         progressBar.visibility = View.VISIBLE
+        errorGroup.visibility = View.GONE
+        recyclerView.visibility = View.GONE
         // The base part of your Google Sheet URL
         val sheetId = "2PACX-1vRztE9nSnn54KQxwLlLMNgk-v1QjfC-AVy35OyBZPFssRt1zSkgrdX1Xi92oW9i3pkx4HV4AZjclLzF"
         val gid = "113075560" // The GID for your "video" sheet
@@ -94,6 +111,7 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
         val stringRequest = StringRequest(Request.Method.GET, url,
             { response ->
                 progressBar.visibility = View.GONE
+                recyclerView.visibility = View.VISIBLE
                 val videoList = parseCsv(response)
                 videoCount = videoList.size
                 updateTitle(videoCount)
@@ -101,7 +119,8 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
             },
             { error ->
                 progressBar.visibility = View.GONE
-                Toast.makeText(this, "Error fetching data: ${error.message}", Toast.LENGTH_LONG).show()
+                errorMessageTextView.text = "Connect to internet to load videos"
+                errorGroup.visibility = View.VISIBLE
             })
 
         Volley.newRequestQueue(this).add(stringRequest)

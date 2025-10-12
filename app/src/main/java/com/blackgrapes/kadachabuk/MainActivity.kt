@@ -1,11 +1,13 @@
 package com.blackgrapes.kadachabuk
 
+import android.content.DialogInterface
 import android.content.Intent
 import com.blackgrapes.kadachabuk.VideoActivity
 import android.app.Dialog
 import android.database.MatrixCursor
 import android.provider.BaseColumns
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
@@ -14,6 +16,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.Button
 import androidx.core.graphics.ColorUtils
+import android.widget.CheckBox
 import android.view.animation.AnimationUtils
 import android.view.ViewGroup
 import androidx.cursoradapter.widget.SimpleCursorAdapter
@@ -40,6 +43,7 @@ import androidx.core.app.ShareCompat
 import com.airbnb.lottie.LottieAnimationView
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.CoroutineScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,6 +52,7 @@ import kotlinx.coroutines.launch
 private const val SEARCH_HISTORY_PREFS = "SearchHistoryPrefs"
 private const val KEY_SEARCH_HISTORY = "search_history"
 private const val MAX_SEARCH_HISTORY = 10
+private const val ABOUT_PREFS = "AboutPrefs"
 
 
 class MainActivity : AppCompatActivity() {
@@ -503,6 +508,10 @@ class MainActivity : AppCompatActivity() {
                 startActivity(Intent(this, VideoActivity::class.java))
                 true
             }
+            R.id.action_about -> {
+                showAboutDialog()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -535,12 +544,23 @@ class MainActivity : AppCompatActivity() {
             Log.d("MainActivity", "Chapters LiveData updated. Count: ${chapters?.size ?: 0}")
             chapters?.let {
                 if (it.isNotEmpty()) {
+                    // This is the first time we are displaying chapters in this session.
+                    // This is the perfect place to show the initial "About" dialog.
+                    if (!bookViewModel.hasShownInitialAboutDialog) {
+                        val aboutPrefs = getSharedPreferences(ABOUT_PREFS, Context.MODE_PRIVATE)
+                        val showAbout = aboutPrefs.getBoolean("show_about_on_startup", true)
+                        if (showAbout) {
+                            val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+                            val savedLangCode = sharedPreferences.getString("selected_language_code", null)
+                            savedLangCode?.let { langCode -> bookViewModel.fetchAboutInfo(langCode, forceRefresh = false) }
+                        }
+                        bookViewModel.hasShownInitialAboutDialog = true
+                    }
                     chapterAdapter.updateChapters(it)
                     hideNoResultsView()
                     originalChapters = it // Store the full list
                     recyclerViewChapters.visibility = View.VISIBLE
                 } else { // This block runs when the observed chapter list is empty.
-                    // Only show "No chapters" if we are not in a loading state and there's no error.
                     // Don't hide the RecyclerView if there are no chapters, just show an empty state.
                     // This prevents the UI from "jumping" if the user switches to a language with no content.
                     chapterAdapter.updateChapters(emptyList())
@@ -636,6 +656,48 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        bookViewModel.aboutInfo.observe(this) { result ->
+            result.onSuccess { aboutText ->
+                showAboutDialog(aboutText)
+            }.onFailure {
+                // Optionally handle error, e.g., show a toast
+                Log.e("MainActivity", "Failed to get 'About' info", it)
+            }
+        }
+    }
+
+    private fun showAboutDialog(content: String? = null) {
+        if (content == null) {
+            val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+            val savedLangCode = sharedPreferences.getString("selected_language_code", null)
+            savedLangCode?.let { bookViewModel.fetchAboutInfo(it, forceRefresh = false) }
+            return
+        }
+
+        val dialogView = layoutInflater.inflate(R.layout.dialog_about, null)
+        val aboutContentTextView = dialogView.findViewById<TextView>(R.id.about_content)
+        val dontShowAgainCheckbox = dialogView.findViewById<CheckBox>(R.id.checkbox_dont_show_again)
+        val closeButton = dialogView.findViewById<Button>(R.id.button_close)
+
+        aboutContentTextView.text = content
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(dialogView)
+            .create()
+
+        closeButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.setOnShowListener {
+            (it as? Dialog)?.window?.attributes?.windowAnimations = R.style.DialogAnimation
+        }
+        dialog.setOnDismissListener {
+            val aboutPrefs = getSharedPreferences(ABOUT_PREFS, Context.MODE_PRIVATE)
+            aboutPrefs.edit().putBoolean("show_about_on_startup", !dontShowAgainCheckbox.isChecked).apply()
+        }
+        dialog.show()
     }
 
     private fun showNoResultsView(message: String) {

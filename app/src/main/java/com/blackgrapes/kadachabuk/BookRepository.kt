@@ -20,6 +20,8 @@ import java.net.URL
 private const val GOOGLE_SHEET_BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRztE9nSnn54KQxwLlLMNgk-v1QjfC-AVy35OyBZPFssRt1zSkgrdX1Xi92oW9i3pkx4HV4AZjclLzF/pub"
 // Suffix part of the Google Sheet publish URL (after gid)
 private const val GOOGLE_SHEET_URL_SUFFIX = "&single=true&output=csv"
+private const val ABOUT_GID = "1925993700"
+private const val ABOUT_INFO_PREFS = "AboutInfoPrefs"
 
 // Map language codes to their respective GID
 private val languageToGidMap = mapOf(
@@ -55,6 +57,16 @@ class BookRepository(private val context: Context) {
             URL(urlString)
         } catch (e: Exception) {
             Log.e("BookRepository", "Malformed URL for $languageCode: $urlString", e)
+            null
+        }
+    }
+
+    private fun getAboutSheetUrl(): URL? {
+        val urlString = "$GOOGLE_SHEET_BASE_URL?gid=$ABOUT_GID$GOOGLE_SHEET_URL_SUFFIX"
+        return try {
+            URL(urlString)
+        } catch (e: Exception) {
+            Log.e("BookRepository", "Malformed URL for about sheet: $urlString", e)
             null
         }
     }
@@ -253,6 +265,59 @@ class BookRepository(private val context: Context) {
         } catch (e: Exception) {
             Log.e("BookRepository", "Error during internal CSV parsing for $languageCodeForLog", e)
             Result.failure(e)
+        }
+    }
+
+    suspend fun getAboutInfo(languageCode: String, forceRefresh: Boolean = false): Result<String> {
+        return withContext(Dispatchers.IO) {
+            val prefs = context.getSharedPreferences(ABOUT_INFO_PREFS, Context.MODE_PRIVATE)
+            val cacheKey = "about_$languageCode"
+
+            if (!forceRefresh) {
+                val cachedInfo = prefs.getString(cacheKey, null)
+                if (cachedInfo != null) {
+                    Log.d("BookRepository", "CACHE HIT for about info: $languageCode")
+                    return@withContext Result.success(cachedInfo)
+                }
+            }
+
+            Log.d("BookRepository", "CACHE MISS for about info: $languageCode. Fetching from network.")
+            try {
+                val url = getAboutSheetUrl() ?: return@withContext Result.failure(Exception("Could not create URL for about sheet"))
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connect()
+
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val aboutText = parseAboutCsv(connection.inputStream, languageCode)
+                    if (aboutText != null) {
+                        // Save to cache before returning
+                        prefs.edit().putString(cacheKey, aboutText).apply()
+                        Log.d("BookRepository", "Saved about info for $languageCode to cache.")
+                        Result.success(aboutText)
+                    } else {
+                        Result.failure(Exception("About info not found for language: $languageCode"))
+                    }
+                } else {
+                    Result.failure(Exception("Failed to download about info: ${connection.responseCode}"))
+                }
+            } catch (e: Exception) {
+                Log.e("BookRepository", "Error fetching about info", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    private fun parseAboutCsv(inputStream: InputStream, languageCode: String): String? {
+        return csvReader { skipEmptyLine = true }.open(inputStream) {
+            readAllAsSequence()
+                .drop(1) // Skip header row
+                .firstOrNull { row ->
+                    // Find the first row where the language code matches
+                    row.size >= 2 && row[0].trim().equals(languageCode, ignoreCase = true)
+                }
+                ?.get(1) // If a row is found, get the second column (the "about" text)
+                ?.trim() // And trim it
         }
     }
 

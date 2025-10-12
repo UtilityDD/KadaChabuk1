@@ -28,6 +28,11 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
     private val _downloadingChaptersList = MutableLiveData<List<ChapterDownloadStatus>>()
     val downloadingChaptersList: LiveData<List<ChapterDownloadStatus>> = _downloadingChaptersList
 
+    private val _aboutInfo = MutableLiveData<Result<String>>()
+    val aboutInfo: LiveData<Result<String>> = _aboutInfo
+
+    var hasShownInitialAboutDialog = false
+
     fun fetchAndLoadChapters(
         languageCode: String,
         languageName: String,
@@ -68,6 +73,12 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
                 }
             )
             _isLoading.postValue(false)
+        }
+    }
+
+    fun fetchAboutInfo(languageCode: String, forceRefresh: Boolean = false) {
+        viewModelScope.launch {
+            _aboutInfo.postValue(repository.getAboutInfo(languageCode, forceRefresh))
         }
     }
 

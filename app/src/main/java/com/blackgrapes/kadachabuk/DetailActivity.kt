@@ -188,8 +188,13 @@ class DetailActivity : AppCompatActivity() {
 
             // Calculate alpha: 1.0 (fully visible) at scrollY 0, to 0.0 (fully transparent)
             // as the user scrolls past the image's height.
-            val alpha = 1.0f - (scrollY / imageHeight)
-            imageViewHeader.alpha = alpha.coerceIn(0f, 1f) // Ensure alpha stays between 0 and 1
+            val alpha = (1.0f - (scrollY / imageHeight)).coerceIn(0f, 1f)
+
+            // Apply the same fade effect to the header image and the top icons.
+            imageViewHeader.alpha = alpha
+            backButton.alpha = alpha
+            bookmarkButton.alpha = alpha
+            fontSettingsButton.alpha = alpha
         }
     }
 

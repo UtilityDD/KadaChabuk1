@@ -161,6 +161,7 @@ class NoteAdapter(
 
     class NoteViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
         lateinit var noteContent: TextView
+        lateinit var noteSerial: TextView
         lateinit var noteDate: TextView
         lateinit var shareButton: ImageButton
         lateinit var deleteButton: ImageButton
@@ -169,6 +170,7 @@ class NoteAdapter(
             // Check if the item view is a ViewGroup to add our button layout
             if (view is ViewGroup) {
                 noteContent = view.findViewById(R.id.text_view_note_content)
+                noteSerial = view.findViewById(R.id.text_view_note_serial)
                 noteDate = view.findViewById(R.id.text_view_note_date)
 
                 // Programmatically create a horizontal LinearLayout for the buttons
@@ -210,6 +212,10 @@ class NoteAdapter(
     override fun onBindViewHolder(holder: NoteViewHolder, position: Int) {
         val noteItem = notes[position]
         holder.noteContent.text = noteItem.text
+
+        // Calculate serial number. Since the list is sorted descending, the oldest note is last.
+        val serialNumber = notes.size - position
+        holder.noteSerial.text = "$serialNumber."
 
         if (noteItem.timestamp > 0) {
             val sdf = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())

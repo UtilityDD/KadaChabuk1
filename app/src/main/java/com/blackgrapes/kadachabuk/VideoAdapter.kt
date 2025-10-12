@@ -1,7 +1,6 @@
 package com.blackgrapes.kadachabuk
 
 import android.content.Intent
-import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -28,20 +27,25 @@ class VideoAdapter(private val videos: List<Video>) :
         val video = videos[position]
         holder.remark.text = video.remark
 
-        val videoId = video.getYouTubeVideoId()
+        val videoId = video.getYouTubeVideoId() // For loading the thumbnail
         if (videoId != null) {
             val thumbnailUrl = "https://img.youtube.com/vi/$videoId/0.jpg"
             Picasso.get().load(thumbnailUrl).into(holder.thumbnail)
         }
 
         holder.itemView.setOnClickListener {
-            val context = holder.itemView.context
-            val appIntent = Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:" + videoId))
-            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://www.youtube.com/watch?v=" + videoId))
-            try {
-                context.startActivity(appIntent)
-            } catch (ex: android.content.ActivityNotFoundException) {
-                context.startActivity(webIntent)
+            // Re-fetch the video and its ID at the time of click to ensure correctness
+            val clickedPosition = holder.adapterPosition
+            if (clickedPosition == RecyclerView.NO_POSITION) return@setOnClickListener
+
+            val clickedVideo = videos[clickedPosition]
+            val clickedVideoId = clickedVideo.getYouTubeVideoId()
+            // Only start the activity if we successfully extracted a video ID.
+            if (clickedVideoId != null) {
+                val context = holder.itemView.context
+                val intent = Intent(context, VideoPlayerActivity::class.java)
+                intent.putExtra("VIDEO_ID", clickedVideoId)
+                context.startActivity(intent)
             }
         }
     }

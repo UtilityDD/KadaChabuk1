@@ -37,6 +37,11 @@
         <activity
             android:name=".VideoActivity"
             android:label="Video Links" />
+                    <activity
+            android:name=".VideoPlayerActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
     </application>
 
 </manifest>

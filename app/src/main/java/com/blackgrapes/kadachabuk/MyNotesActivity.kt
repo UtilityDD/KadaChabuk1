@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.ImageButton
+import android.util.TypedValue
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -51,9 +52,17 @@ class MyNotesActivity : AppCompatActivity()  {
         toolbar = findViewById(R.id.toolbar_notes)
         ViewCompat.setOnApplyWindowInsetsListener(toolbar) { view, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            // Apply the top inset as padding to push the toolbar's content down, without changing its height
-            view.setPadding(view.paddingLeft, insets.top, view.paddingRight, 0)
-            windowInsets
+            // Apply the top inset as padding
+            view.setPadding(view.paddingLeft, insets.top, view.paddingRight, view.paddingBottom)
+
+            // Increase the toolbar's height to accommodate the new padding
+            val typedValue = TypedValue()
+            theme.resolveAttribute(android.R.attr.actionBarSize, typedValue, true)
+            val actionBarSize = TypedValue.complexToDimensionPixelSize(typedValue.data, resources.displayMetrics)
+            view.layoutParams.height = actionBarSize + insets.top
+
+            // Consume the insets
+            WindowInsetsCompat.CONSUMED
         }
 
         recyclerView = findViewById(R.id.recycler_view_notes)

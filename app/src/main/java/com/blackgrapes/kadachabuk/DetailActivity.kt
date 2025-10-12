@@ -73,6 +73,7 @@ class DetailActivity : AppCompatActivity() {
     private var chapterDate: String? = null
     private var customActionMenu: View? = null
     private val matchIndices = mutableListOf<Int>()
+    private var previousMatchIndex = -1
     private var currentMatchIndex = -1
 
     // Array of your drawable resource IDs
@@ -560,27 +561,35 @@ class DetailActivity : AppCompatActivity() {
         if (matchIndex < 0 || matchIndex >= matchIndices.size) return
 
         val charIndex = matchIndices[matchIndex]
-        val searchQuery = intent.getStringExtra("EXTRA_SEARCH_QUERY") ?: return
-        val spannable = textViewData.text as? SpannableStringBuilder ?: SpannableStringBuilder(textViewData.text)
+        val searchQueryLength = intent.getStringExtra("EXTRA_SEARCH_QUERY")?.length ?: 0
+        if (searchQueryLength == 0) return
 
-        // Animate the highlight for the current match
-        val animator = ValueAnimator.ofArgb(
-            ContextCompat.getColor(this, R.color.flash_color),
-            ContextCompat.getColor(this, R.color.highlight_color)
-        )
-        animator.duration = 800 // A quicker, more noticeable flash (800ms)
-        animator.addUpdateListener { animation ->
-            val color = animation.animatedValue as Int
-            val highlightSpan = BackgroundColorSpan(color)
-            // Remove any previous spans on this section before adding a new one
-            val existingSpans = spannable.getSpans(charIndex, charIndex + searchQuery.length, BackgroundColorSpan::class.java)
-            existingSpans.forEach { spannable.removeSpan(it) }
-            // Add the new, animated-color span
-            spannable.setSpan(highlightSpan, charIndex, charIndex + searchQuery.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            // Set the text once with the modified spannable
-            textViewData.text = spannable
+        val spannable = SpannableStringBuilder(textViewData.text)
+
+        // 1. Revert the previously highlighted item (if any) to the standard highlight color.
+        if (previousMatchIndex != -1 && previousMatchIndex != matchIndex) {
+            val prevCharIndex = matchIndices[previousMatchIndex]
+            spannable.setSpan(
+                BackgroundColorSpan(ContextCompat.getColor(this, R.color.highlight_color)),
+                prevCharIndex,
+                prevCharIndex + searchQueryLength,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
         }
-        animator.start()
+
+        // 2. Highlight the new current item with a distinct color.
+        spannable.setSpan(
+            BackgroundColorSpan(ContextCompat.getColor(this, R.color.current_match_highlight)),
+            charIndex,
+            charIndex + searchQueryLength,
+            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+
+        // 3. Update the TextView with the new spannable text.
+        textViewData.text = spannable
+
+        // 4. Update the previous match index to the current one for the next navigation.
+        previousMatchIndex = matchIndex
 
         scrollView.post {
             val layout = textViewData.layout

@@ -20,6 +20,7 @@
     <color name="highlight_color">#80FFEB3B</color> <!-- Semi-transparent yellow for highlighting -->
     <color name="highlight_color_animated">#CCFFEB3B</color> <!-- Brighter, more opaque yellow for animation -->
     <color name="flash_color">#994CDADA</color> <!-- A theme-aware cyan for a prominent flash -->
+    <color name="current_match_highlight">#FFC107</color> <!-- A bright yellow/amber for the current match -->
 
     <!-- Dark Theme Palette -->
     <color name="dark_primary">#4CDADA</color>

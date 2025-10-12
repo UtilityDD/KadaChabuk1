@@ -2,10 +2,16 @@ package com.blackgrapes.kadachabuk
 
 import android.content.Intent
 import android.view.LayoutInflater
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.BackgroundColorSpan
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import java.text.BreakIterator
+import java.util.Locale
 
 data class SearchResult(val chapter: Chapter, val matchCount: Int)
 
@@ -40,8 +46,12 @@ class SearchResultAdapter(private var searchResults: List<SearchResult>) :
 
         fun bind(searchResult: SearchResult, query: String?) {
             val chapter = searchResult.chapter
-            headingTextView.text = chapter.heading
-            serialTextView.text = chapter.serial
+            if (query.isNullOrEmpty()) {
+                headingTextView.text = chapter.heading
+            } else {
+                headingTextView.text = highlightText(chapter.heading, query, chapter.languageCode)
+            }
+            serialTextView.text = chapter.serial // Serial numbers are usually short and don't need highlighting.
             dateTextView.text = "${searchResult.matchCount} matches"
 
             itemView.setOnClickListener {
@@ -57,6 +67,39 @@ class SearchResultAdapter(private var searchResults: List<SearchResult>) :
                 }
                 context.startActivity(intent)
             }
+        }
+
+        private fun highlightText(fullText: String, query: String, languageCode: String): SpannableString {
+            val spannableString = SpannableString(fullText)
+            if (query.isEmpty()) {
+                return spannableString
+            }
+
+            val highlightColor = ContextCompat.getColor(itemView.context, R.color.highlight_color)
+            // Create a locale from the language code to ensure correct word boundary detection
+            val locale = if (languageCode.isNotEmpty()) {
+                Locale(languageCode)
+            } else {
+                Locale.getDefault()
+            }
+            val boundary = BreakIterator.getWordInstance(locale)
+            boundary.setText(fullText)
+            var fromIndex = 0
+
+            while (fromIndex < fullText.length) {
+                val matchIndex = fullText.indexOf(query, fromIndex, ignoreCase = true)
+                if (matchIndex == -1) break
+
+                // Use BreakIterator to find the word boundaries around the match.
+                // By checking from the middle of the match, we ensure we get the boundaries
+                // of the containing word, even if the match itself is a valid word.
+                val wordStart = boundary.preceding(matchIndex + 1)
+                val wordEnd = boundary.following(matchIndex)
+                
+                spannableString.setSpan(BackgroundColorSpan(highlightColor), wordStart, wordEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                fromIndex = wordEnd
+            }
+            return spannableString
         }
     }
 }

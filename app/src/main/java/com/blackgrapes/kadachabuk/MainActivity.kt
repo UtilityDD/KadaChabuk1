@@ -5,6 +5,7 @@ import android.content.Intent
 import com.blackgrapes.kadachabuk.VideoActivity
 import android.app.Dialog
 import android.database.MatrixCursor
+import android.animation.ValueAnimator
 import android.provider.BaseColumns
 import android.content.Context
 import android.content.SharedPreferences
@@ -12,6 +13,7 @@ import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.ScrollView
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Button
@@ -47,6 +49,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val SEARCH_HISTORY_PREFS = "SearchHistoryPrefs"
@@ -686,12 +689,34 @@ class MainActivity : AppCompatActivity() {
             .setView(dialogView)
             .create()
 
+        val scrollView = dialogView.findViewById<ScrollView>(R.id.about_scroll_view)
+
         closeButton.setOnClickListener {
             dialog.dismiss()
         }
 
         dialog.setOnShowListener {
             (it as? Dialog)?.window?.attributes?.windowAnimations = R.style.DialogAnimation
+
+            // Post a runnable to check for scrollability after the layout is drawn
+            scrollView.post {
+                val canScroll = scrollView.getChildAt(0).height > scrollView.height
+                if (canScroll) {
+                    // Use a coroutine to add a small delay before starting the animation
+                    uiScope.launch {
+                        delay(500) // Wait half a second
+                        val scrollDistance = (50 * resources.displayMetrics.density).toInt() // 50dp
+                        ValueAnimator.ofInt(0, scrollDistance, 0).apply {
+                            duration = 1500
+                            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                            addUpdateListener { animation ->
+                                scrollView.scrollTo(0, animation.animatedValue as Int)
+                            }
+                            start()
+                        }
+                    }
+                }
+            }
         }
         dialog.setOnDismissListener {
             val aboutPrefs = getSharedPreferences(ABOUT_PREFS, Context.MODE_PRIVATE)

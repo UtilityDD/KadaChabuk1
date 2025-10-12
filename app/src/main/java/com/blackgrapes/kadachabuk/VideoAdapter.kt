@@ -11,9 +11,12 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.squareup.picasso.Picasso
 
-class VideoAdapter(private val videos: List<Video>) : RecyclerView.Adapter<VideoAdapter.VideoViewHolder>() {
+class VideoAdapter(
+    private val videos: List<Video>,
+    private val playbackListener: VideoPlaybackListener
+) : RecyclerView.Adapter<VideoAdapter.VideoViewHolder>() {
 
-    private var currentlyPlayingPosition = -1
+    private var currentlyPlayingPosition: Int = -1
 
     class VideoViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val thumbnail: ImageView = view.findViewById(R.id.videoThumbnail)
@@ -45,6 +48,7 @@ class VideoAdapter(private val videos: List<Video>) : RecyclerView.Adapter<Video
 
         if (position == currentlyPlayingPosition) {
             // This item should be playing
+            playbackListener.onVideoPlaybackChanged(video.remark)
             holder.thumbnail.visibility = View.GONE
             holder.webView.visibility = View.VISIBLE
 
@@ -59,6 +63,7 @@ class VideoAdapter(private val videos: List<Video>) : RecyclerView.Adapter<Video
             holder.webView.loadData(htmlContent, "text/html", "utf-8")
         } else {
             // This item should show the thumbnail
+            // If this view was previously playing, reset the title.
             holder.releasePlayer()
             holder.thumbnail.visibility = View.VISIBLE
             holder.webView.visibility = View.GONE
@@ -66,12 +71,33 @@ class VideoAdapter(private val videos: List<Video>) : RecyclerView.Adapter<Video
 
         holder.thumbnail.setOnClickListener {
             val previousPlayingPosition = currentlyPlayingPosition
-            currentlyPlayingPosition = holder.adapterPosition
+            val clickedPosition = holder.adapterPosition
+
+            if (clickedPosition == currentlyPlayingPosition) {
+                // Tapped on the currently playing video, so stop it.
+                currentlyPlayingPosition = -1
+                notifyItemChanged(clickedPosition)
+                playbackListener.onVideoPlaybackChanged(null) // Reset title
+                return@setOnClickListener
+            }
+
+            currentlyPlayingPosition = clickedPosition
 
             if (previousPlayingPosition != -1) {
                 notifyItemChanged(previousPlayingPosition)
             }
             notifyItemChanged(currentlyPlayingPosition)
+        }
+    }
+
+    override fun onViewDetachedFromWindow(holder: VideoViewHolder) {
+        super.onViewDetachedFromWindow(holder)
+        // This is called when a view is scrolled off-screen.
+        // We stop the video playback if this is the currently playing item.
+        if (holder.adapterPosition == currentlyPlayingPosition) {
+            currentlyPlayingPosition = -1
+            notifyItemChanged(holder.adapterPosition)
+            playbackListener.onVideoPlaybackChanged(null) // Reset title
         }
     }
 

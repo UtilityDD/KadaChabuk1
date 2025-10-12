@@ -18,12 +18,18 @@ import com.android.volley.Request
 import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
+ 
+interface VideoPlaybackListener {
+    fun onVideoPlaybackChanged(videoTitle: String?)
+}
 
-class VideoActivity : AppCompatActivity() {
+class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var progressBar: ProgressBar
     private lateinit var toolbar: MaterialToolbar
+    private var videoCount = 0
+    private val originalTitle by lazy { "Video Links ($videoCount)" }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,8 +95,9 @@ class VideoActivity : AppCompatActivity() {
             { response ->
                 progressBar.visibility = View.GONE
                 val videoList = parseCsv(response)
-                updateTitle(videoList.size)
-                recyclerView.adapter = VideoAdapter(videoList)
+                videoCount = videoList.size
+                updateTitle(videoCount)
+                recyclerView.adapter = VideoAdapter(videoList, this)
             },
             { error ->
                 progressBar.visibility = View.GONE
@@ -115,5 +122,13 @@ class VideoActivity : AppCompatActivity() {
             }
         }
         return videos
+    }
+
+    override fun onVideoPlaybackChanged(videoTitle: String?) {
+        if (videoTitle != null) {
+            toolbar.title = videoTitle
+        } else {
+            toolbar.title = originalTitle
+        }
     }
 }

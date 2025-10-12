@@ -71,6 +71,7 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var bookmarkButton: ImageButton
     private lateinit var chapterSerial: String
     private lateinit var languageCode: String
+    private lateinit var scrollToTopButton: ImageButton
     private lateinit var searchNavigationLayout: LinearLayout
     private lateinit var previousMatchButton: ImageButton
     private lateinit var nextMatchButton: ImageButton
@@ -128,6 +129,7 @@ class DetailActivity : AppCompatActivity() {
         bookmarkButton = findViewById(R.id.button_bookmark)
         searchNavigationLayout = findViewById(R.id.search_navigation_layout)
         previousMatchButton = findViewById(R.id.button_previous_match)
+        scrollToTopButton = findViewById(R.id.button_scroll_to_top)
         nextMatchButton = findViewById(R.id.button_next_match)
         matchCountTextView = findViewById(R.id.text_view_match_count)
         readingHistoryLayout = findViewById(R.id.reading_history_layout)
@@ -166,6 +168,10 @@ class DetailActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
+        scrollToTopButton.setOnClickListener {
+            scrollView.smoothScrollTo(0, 0)
+        }
+
         val searchQuery = intent.getStringExtra("EXTRA_SEARCH_QUERY")
         // Check for a saved scroll position, but only if not coming from a search result.
         if (searchQuery.isNullOrEmpty()) {
@@ -188,13 +194,21 @@ class DetailActivity : AppCompatActivity() {
 
             // Calculate alpha: 1.0 (fully visible) at scrollY 0, to 0.0 (fully transparent)
             // as the user scrolls past the image's height.
-            val alpha = (1.0f - (scrollY / imageHeight)).coerceIn(0f, 1f)
+            val topIconsAlpha = (1.0f - (scrollY / imageHeight)).coerceIn(0f, 1f)
+
+            // Calculate alpha for the "scroll to top" button. It fades in as the top icons fade out.
+            // It starts appearing after scrolling past a fraction of the image height.
+            val scrollToTopAlpha = (scrollY / imageHeight - 0.5f).coerceIn(0f, 1f)
 
             // Apply the same fade effect to the header image and the top icons.
-            imageViewHeader.alpha = alpha
-            backButton.alpha = alpha
-            bookmarkButton.alpha = alpha
-            fontSettingsButton.alpha = alpha
+            imageViewHeader.alpha = topIconsAlpha
+            backButton.alpha = topIconsAlpha
+            bookmarkButton.alpha = topIconsAlpha
+            fontSettingsButton.alpha = topIconsAlpha
+
+            // Apply the fade effect to the scroll-to-top button.
+            scrollToTopButton.visibility = if (scrollToTopAlpha > 0) View.VISIBLE else View.GONE
+            scrollToTopButton.alpha = scrollToTopAlpha
         }
     }
 

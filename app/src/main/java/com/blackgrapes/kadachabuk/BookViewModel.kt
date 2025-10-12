@@ -32,6 +32,7 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
     val aboutInfo: LiveData<Result<String>> = _aboutInfo
 
     var hasShownInitialAboutDialog = false
+    val isFetchingAboutForDialog = MutableLiveData<Boolean>(false)
 
     fun fetchAndLoadChapters(
         languageCode: String,

@@ -87,7 +87,6 @@ class MainActivity : AppCompatActivity() {
 
     private var searchJob: Job? = null
     private val uiScope = CoroutineScope(Dispatchers.Main)
-    private var isAboutDialogFromMenu = false
 
     // Define a string resource for the default loading message if not already present
     // For example, in res/values/strings.xml:
@@ -513,7 +512,6 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             R.id.action_about -> {
-                isAboutDialogFromMenu = true
                 showAboutDialog()
                 true
             }
@@ -556,7 +554,6 @@ class MainActivity : AppCompatActivity() {
                         val showAbout = aboutPrefs.getBoolean("show_about_on_startup", true)
                         if (showAbout) {
                             val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-                            isAboutDialogFromMenu = false // Explicitly set for startup
                             val savedLangCode = sharedPreferences.getString("selected_language_code", null)
                             savedLangCode?.let { langCode -> bookViewModel.fetchAboutInfo(langCode, forceRefresh = false) }
                         }
@@ -665,7 +662,7 @@ class MainActivity : AppCompatActivity() {
 
         bookViewModel.aboutInfo.observe(this) { result ->
             result.onSuccess { aboutText ->
-                showAboutDialog(aboutText)
+                if (bookViewModel.isFetchingAboutForDialog.value == true) showAboutDialog(aboutText)
             }.onFailure {
                 // Optionally handle error, e.g., show a toast
                 Log.e("MainActivity", "Failed to get 'About' info", it)
@@ -674,6 +671,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAboutDialog(content: String? = null) {
+        bookViewModel.isFetchingAboutForDialog.value = true
         if (content == null) {
             val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
             val savedLangCode = sharedPreferences.getString("selected_language_code", null)
@@ -688,7 +686,10 @@ class MainActivity : AppCompatActivity() {
 
         aboutContentTextView.text = content
 
-        dontShowAgainCheckbox.visibility = if (isAboutDialogFromMenu) View.GONE else View.VISIBLE
+        // Show the "Don't show again" checkbox only on the initial startup dialog.
+        // The hasShownInitialAboutDialog flag from the ViewModel is the reliable source of truth here.
+        dontShowAgainCheckbox.visibility = if (bookViewModel.hasShownInitialAboutDialog) View.GONE else View.VISIBLE
+
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogView)
             .create()
@@ -727,6 +728,7 @@ class MainActivity : AppCompatActivity() {
             if (dontShowAgainCheckbox.visibility == View.VISIBLE) {
                 aboutPrefs.edit().putBoolean("show_about_on_startup", !dontShowAgainCheckbox.isChecked).apply()
             }
+            bookViewModel.isFetchingAboutForDialog.value = false
         }
         dialog.show()
     }

@@ -41,7 +41,7 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
         // Adjust system icon colors based on the current theme (light/dark)
         val controller = ViewCompat.getWindowInsetsController(window.decorView)
         val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        controller?.isAppearanceLightStatusBars = !isNightMode
+        controller?.isAppearanceLightStatusBars = isNightMode
 
         toolbar = findViewById(R.id.toolbar) // Initialize once
         ViewCompat.setOnApplyWindowInsetsListener(toolbar) { view, windowInsets ->

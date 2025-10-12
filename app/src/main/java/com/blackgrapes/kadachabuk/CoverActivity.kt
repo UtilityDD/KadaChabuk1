@@ -33,7 +33,7 @@ class CoverActivity : AppCompatActivity() {
         // Adjust system icon colors based on the current theme (light/dark)
         val controller = ViewCompat.getWindowInsetsController(window.decorView)
         val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        controller?.isAppearanceLightStatusBars = !isNightMode
+        controller?.isAppearanceLightStatusBars = isNightMode
 
         coverLayout = findViewById(R.id.cover_layout)
         tapToOpenText = findViewById(R.id.textView)

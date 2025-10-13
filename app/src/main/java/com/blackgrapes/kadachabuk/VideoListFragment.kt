@@ -47,12 +47,15 @@ class VideoListFragment : Fragment() {
 
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                super.onScrolled(recyclerView, dx, dy)
-                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
-                if (layoutManager.findFirstVisibleItemPosition() > 5) {
-                    scrollToTopButton.show()
+                // Show the button if the user has scrolled down past the first two items
+                if ((recyclerView.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition() > 2) {
+                    if (scrollToTopButton.visibility != View.VISIBLE) {
+                        scrollToTopButton.animate().alpha(1f).setDuration(200).withStartAction { scrollToTopButton.visibility = View.VISIBLE }
+                    }
                 } else {
-                    scrollToTopButton.hide()
+                    if (scrollToTopButton.visibility == View.VISIBLE) {
+                        scrollToTopButton.animate().alpha(0f).setDuration(200).withEndAction { scrollToTopButton.visibility = View.GONE }
+                    }
                 }
             }
         })

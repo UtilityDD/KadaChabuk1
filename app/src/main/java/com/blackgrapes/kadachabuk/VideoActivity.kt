@@ -47,9 +47,9 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
 
         // Adjust system icon colors based on the current theme (light/dark)
         val controller = ViewCompat.getWindowInsetsController(window.decorView)
-        // Since the AppBar is now using colorPrimary, the status bar icons should be light
-        // to be visible on the dark background. isAppearanceLightStatusBars = false makes them light.
-        controller?.isAppearanceLightStatusBars = false
+        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        // isAppearanceLightStatusBars = true means DARK icons, for light backgrounds.
+        controller?.isAppearanceLightStatusBars = isNightMode
 
         toolbar = findViewById(R.id.toolbar) // Initialize once
         ViewCompat.setOnApplyWindowInsetsListener(toolbar) { view, windowInsets ->

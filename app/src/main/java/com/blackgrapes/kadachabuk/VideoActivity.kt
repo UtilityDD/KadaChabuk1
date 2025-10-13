@@ -1,27 +1,26 @@
 package com.blackgrapes.kadachabuk
 
-import android.os.Bundle
 import android.content.res.Configuration
+import android.os.Bundle
 import android.util.TypedValue
-import android.view.MenuItem
-import android.view.ViewGroup
 import android.view.View
+import android.view.MenuItem
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.constraintlayout.widget.Group
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
-import androidx.constraintlayout.widget.Group
 import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.appbar.MaterialToolbar
+import androidx.viewpager2.widget.ViewPager2
 import com.android.volley.Request
-import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.tabs.TabLayout
+import com.google.android.material.tabs.TabLayoutMediator
+import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
  
 interface VideoPlaybackListener {
     fun onVideoPlaybackChanged(videoTitle: String?)
@@ -29,14 +28,15 @@ interface VideoPlaybackListener {
 
 class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
 
-    private lateinit var recyclerView: RecyclerView
     private lateinit var progressBar: ProgressBar
     private lateinit var toolbar: MaterialToolbar
     private lateinit var errorGroup: Group
     private lateinit var errorMessageTextView: TextView
     private lateinit var retryButton: Button
-    private var videoCount = 0
-    private val originalTitle by lazy { "Video Links ($videoCount)" }
+    private lateinit var tabLayout: TabLayout
+    private lateinit var viewPager: ViewPager2
+
+    private var originalTitle: String = "Video Links"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,8 +47,9 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
 
         // Adjust system icon colors based on the current theme (light/dark)
         val controller = ViewCompat.getWindowInsetsController(window.decorView)
-        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        controller?.isAppearanceLightStatusBars = isNightMode
+        // Since the AppBar is now using colorPrimary, the status bar icons should be light
+        // to be visible on the dark background. isAppearanceLightStatusBars = false makes them light.
+        controller?.isAppearanceLightStatusBars = false
 
         toolbar = findViewById(R.id.toolbar) // Initialize once
         ViewCompat.setOnApplyWindowInsetsListener(toolbar) { view, windowInsets ->
@@ -69,11 +70,10 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.title = "Video Links"
 
-        recyclerView = findViewById(R.id.videosRecyclerView)
         progressBar = findViewById(R.id.progressBar)
-        recyclerView.layoutManager = LinearLayoutManager(this)
-
         errorGroup = findViewById(R.id.error_group)
+        tabLayout = findViewById(R.id.tab_layout)
+        viewPager = findViewById(R.id.view_pager)
         errorMessageTextView = findViewById(R.id.error_message)
         retryButton = findViewById(R.id.retry_button)
 
@@ -95,14 +95,11 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
         return super.onOptionsItemSelected(item)
     }
 
-    private fun updateTitle(count: Int) {
-        toolbar.title = "Video Links ($count)"
-    }
-
     private fun fetchVideoData() {
         progressBar.visibility = View.VISIBLE
         errorGroup.visibility = View.GONE
-        recyclerView.visibility = View.GONE
+        tabLayout.visibility = View.GONE
+        viewPager.visibility = View.GONE
         // The base part of your Google Sheet URL
         val sheetId = "2PACX-1vRztE9nSnn54KQxwLlLMNgk-v1QjfC-AVy35OyBZPFssRt1zSkgrdX1Xi92oW9i3pkx4HV4AZjclLzF"
         val gid = "113075560" // The GID for your "video" sheet
@@ -111,11 +108,27 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
         val stringRequest = StringRequest(Request.Method.GET, url,
             { response ->
                 progressBar.visibility = View.GONE
-                recyclerView.visibility = View.VISIBLE
+                tabLayout.visibility = View.VISIBLE
+                viewPager.visibility = View.VISIBLE
                 val videoList = parseCsv(response)
-                videoCount = videoList.size
-                updateTitle(videoCount)
-                recyclerView.adapter = VideoAdapter(videoList, this)
+                val videoMap = videoList.groupBy { it.category }
+
+                val categories = listOf("Speech", "Mahanam", "Vedic Song")
+                val fragments = categories.map { category ->
+                    VideoListFragment.newInstance(videoMap[category] ?: emptyList())
+                }
+
+                val adapter = VideoPagerAdapter(this, fragments)
+                viewPager.adapter = adapter
+
+                TabLayoutMediator(tabLayout, viewPager) { tab, position ->
+                    val category = categories[position]
+                    val count = videoMap[category]?.size ?: 0
+                    tab.text = "$category ($count)"
+                }.attach()
+
+                originalTitle = "Video Links (${videoList.size})"
+                toolbar.title = originalTitle
             },
             { error ->
                 progressBar.visibility = View.GONE
@@ -133,9 +146,13 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
         }.open(csvData.byteInputStream()) {
             // Read all rows but skip the first (header) row
             readAllAsSequence().drop(1).forEach { row ->
-                if (row.size >= 3) {
-                    // Assuming columns are: sl, link, remark
-                    val video = Video(sl = row[0].trim(), link = row[1].trim(), remark = row[2].trim())
+                if (row.size >= 4) {
+                    val video = Video(
+                        sl = row[0].trim(),
+                        link = row[1].trim(),
+                        remark = row[2].trim(),
+                        category = row[3].trim()
+                    )
                     videos.add(video)
                 }
             }

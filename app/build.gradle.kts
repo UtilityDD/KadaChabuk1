@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     // id("org.jetbrains.kotlin.plugin.serialization") version "1.9.21" // Keep if you use it for other things
+    id("kotlin-parcelize")
     id("kotlin-kapt") // Required for Room's annotation processor with Kotlin
 }
 

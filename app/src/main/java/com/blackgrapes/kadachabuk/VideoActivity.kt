@@ -20,6 +20,10 @@ import com.android.volley.toolbox.Volley
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
  
 interface VideoPlaybackListener {
@@ -107,28 +111,36 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
 
         val stringRequest = StringRequest(Request.Method.GET, url,
             { response ->
-                progressBar.visibility = View.GONE
-                tabLayout.visibility = View.VISIBLE
-                viewPager.visibility = View.VISIBLE
-                val videoList = parseCsv(response)
-                val videoMap = videoList.groupBy { it.category }
+                // Launch a coroutine to handle parsing in the background
+                CoroutineScope(Dispatchers.Main).launch {
+                    val videoList = withContext(Dispatchers.IO) {
+                        // This heavy parsing now happens on a background thread
+                        parseCsv(response)
+                    }
 
-                val categories = listOf("Speech", "Mahanam", "Vedic Song")
-                val fragments = categories.map { category ->
-                    VideoListFragment.newInstance(videoMap[category] ?: emptyList())
+                    // Now, update the UI on the main thread
+                    progressBar.visibility = View.GONE
+                    tabLayout.visibility = View.VISIBLE
+                    viewPager.visibility = View.VISIBLE
+
+                    val videoMap = videoList.groupBy { it.category }
+                    val categories = listOf("Speech", "Mahanam", "Vedic Song")
+                    val fragments = categories.map { category ->
+                        VideoListFragment.newInstance(videoMap[category] ?: emptyList())
+                    }
+
+                    val adapter = VideoPagerAdapter(this@VideoActivity, fragments)
+                    viewPager.adapter = adapter
+
+                    TabLayoutMediator(tabLayout, viewPager) { tab, position ->
+                        val category = categories[position]
+                        val count = videoMap[category]?.size ?: 0
+                        tab.text = "$category ($count)"
+                    }.attach()
+
+                    originalTitle = "Video Links (${videoList.size})"
+                    toolbar.title = originalTitle
                 }
-
-                val adapter = VideoPagerAdapter(this, fragments)
-                viewPager.adapter = adapter
-
-                TabLayoutMediator(tabLayout, viewPager) { tab, position ->
-                    val category = categories[position]
-                    val count = videoMap[category]?.size ?: 0
-                    tab.text = "$category ($count)"
-                }.attach()
-
-                originalTitle = "Video Links (${videoList.size})"
-                toolbar.title = originalTitle
             },
             { error ->
                 progressBar.visibility = View.GONE

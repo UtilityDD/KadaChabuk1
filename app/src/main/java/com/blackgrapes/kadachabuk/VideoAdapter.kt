@@ -38,8 +38,8 @@ class VideoAdapter(
     @SuppressLint("SetJavaScriptEnabled")
     override fun onBindViewHolder(holder: VideoViewHolder, position: Int) {
         val video = videos[position]
-        holder.remark.text = video.remark
-
+        // Combine serial number and remark into one TextView
+        holder.remark.text = "${position + 1}. ${video.remark}"
         val videoId = video.getYouTubeVideoId()
         if (videoId != null) {
             val thumbnailUrl = "https://img.youtube.com/vi/$videoId/0.jpg"

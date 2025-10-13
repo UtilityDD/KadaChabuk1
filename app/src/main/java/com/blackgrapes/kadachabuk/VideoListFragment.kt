@@ -6,12 +6,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 class VideoListFragment : Fragment() {
 
     private lateinit var recyclerView: RecyclerView
+    private lateinit var scrollToTopButton: FloatingActionButton
     private var videos: List<Video> = emptyList()
     private var playbackListener: VideoPlaybackListener? = null
 
@@ -32,10 +34,28 @@ class VideoListFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_video_list, container, false)
         recyclerView = view.findViewById(R.id.videosRecyclerView)
+        scrollToTopButton = view.findViewById(R.id.fab_scroll_to_top)
+
         recyclerView.layoutManager = LinearLayoutManager(context)
         playbackListener?.let {
             recyclerView.adapter = VideoAdapter(videos, it)
         }
+
+        scrollToTopButton.setOnClickListener {
+            recyclerView.smoothScrollToPosition(0)
+        }
+
+        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                if (layoutManager.findFirstVisibleItemPosition() > 5) {
+                    scrollToTopButton.show()
+                } else {
+                    scrollToTopButton.hide()
+                }
+            }
+        })
         return view
     }
 

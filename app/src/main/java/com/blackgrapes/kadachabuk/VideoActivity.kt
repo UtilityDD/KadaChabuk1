@@ -2,6 +2,7 @@ package com.blackgrapes.kadachabuk
 
 import android.content.res.Configuration
 import android.os.Bundle
+import android.view.Menu
 import android.util.TypedValue
 import android.view.View
 import android.view.MenuItem
@@ -88,12 +89,23 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
         fetchVideoData()
     }
 
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.video_menu, menu)
+        return true
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle arrow click here
-        if (item.itemId == android.R.id.home) {
-            // This is the ID for the "up" button.
-            onBackPressedDispatcher.onBackPressed()
-            return true
+        when (item.itemId) {
+            android.R.id.home -> {
+                // This is the ID for the "up" button.
+                onBackPressedDispatcher.onBackPressed()
+                return true
+            }
+            R.id.action_refresh_videos -> {
+                // Call fetchVideoData when refresh is clicked
+                fetchVideoData()
+                return true
+            }
         }
 
         return super.onOptionsItemSelected(item)

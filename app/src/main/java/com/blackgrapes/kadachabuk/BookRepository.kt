@@ -21,7 +21,12 @@ private const val GOOGLE_SHEET_BASE_URL = "https://docs.google.com/spreadsheets/
 // Suffix part of the Google Sheet publish URL (after gid)
 private const val GOOGLE_SHEET_URL_SUFFIX = "&single=true&output=csv"
 private const val ABOUT_GID = "1925993700"
+
+// --- PREFERENCES KEYS ---
 private const val ABOUT_INFO_PREFS = "AboutInfoPrefs"
+private const val VERSION_INFO_PREFS = "VersionInfoPrefs"
+// GID for the 'versions' sheet
+private const val VERSIONS_GID = "1804189470"
 
 // Map language codes to their respective GID
 private val languageToGidMap = mapOf(
@@ -61,6 +66,16 @@ class BookRepository(private val context: Context) {
         }
     }
 
+    private fun getVersionsSheetUrl(): URL? {
+        val urlString = "$GOOGLE_SHEET_BASE_URL?gid=$VERSIONS_GID$GOOGLE_SHEET_URL_SUFFIX"
+        return try {
+            URL(urlString)
+        } catch (e: Exception) {
+            Log.e("BookRepository", "Malformed URL for versions sheet: $urlString", e)
+            null
+        }
+    }
+
     private fun getAboutSheetUrl(): URL? {
         val urlString = "$GOOGLE_SHEET_BASE_URL?gid=$ABOUT_GID$GOOGLE_SHEET_URL_SUFFIX"
         return try {
@@ -84,21 +99,38 @@ class BookRepository(private val context: Context) {
     ): Result<List<Chapter>> {
         return withContext(Dispatchers.IO) {
             try {
-                val dbChapterCount = chapterDao.getChapterCountForLanguage(languageCode)
-                val isDataInDb = dbChapterCount > 0
+                val versionPrefs = context.getSharedPreferences(VERSION_INFO_PREFS, Context.MODE_PRIVATE)
+                val localVersion = versionPrefs.getString("version_$languageCode", "0.0") ?: "0.0"
+                val remoteVersionResult = getRemoteMasterVersion(languageCode)
+                val remoteVersion = remoteVersionResult.getOrNull()
 
-                if (!forceRefreshFromServer && isDataInDb) {
-                    Log.i("BookRepository", "DB CACHE HIT for $languageCode. Loading $dbChapterCount chapters from database.")
+                // Decide if a download is needed
+                val needsDownload = if (forceRefreshFromServer) {
+                    Log.i("BookRepository", "Force refresh triggered for $languageCode.")
+                    true
+                } else if (remoteVersion == null) {
+                    Log.w("BookRepository", "Could not fetch remote version for $languageCode. Will rely on local DB if available.")
+                    false // Cannot compare, so don't download.
+                } else {
+                    (remoteVersion.toFloatOrNull() ?: 0.0f) > (localVersion.toFloatOrNull() ?: 0.0f)
+                }
+
+                if (!needsDownload && chapterDao.getChapterCountForLanguage(languageCode) > 0) {
+                    Log.i("BookRepository", "DB CACHE HIT for $languageCode (v$localVersion). Loading from database.")
                     // FIX: Sort the results from the database to maintain sequence.
                     // We sort by the 'serial' field, treating it as a number.
                     val chaptersFromDb = chapterDao.getChaptersByLanguage(languageCode)
-                    val sortedChapters = chaptersFromDb.sortedBy { it.serial.toIntOrNull() ?: Int.MAX_VALUE }
-                    Result.success(sortedChapters)
+                    val sortedChapters = chaptersFromDb.sortedBy { it.serial.toIntOrNull() ?: Int.MAX_VALUE }                    
+                    return@withContext Result.success(sortedChapters)
                 } else {
                     if (forceRefreshFromServer) {
                         Log.i("BookRepository", "FORCE REFRESH requested for $languageCode. Fetching from server.")
                     } else {
                         Log.i("BookRepository", "DB CACHE MISS for $languageCode. Fetching from server.")
+                    }
+
+                    if (needsDownload && remoteVersion != null) {
+                        Log.i("BookRepository", "New version available for $languageCode. Remote: v$remoteVersion, Local: v$localVersion. Downloading...")
                     }
 
                     // Download the CSV to a temporary file
@@ -126,6 +158,11 @@ class BookRepository(private val context: Context) {
                                     // Replace existing chapters for this language in the DB
                                     chapterDao.replaceChaptersForLanguage(languageCode, chaptersToStoreInDb)
                                     Log.i("BookRepository", "Database updated for $languageCode with ${chaptersToStoreInDb.size} chapters.")
+
+                                    // On successful update, save the new master version
+                                    if (remoteVersion != null) {
+                                        versionPrefs.edit().putString("version_$languageCode", remoteVersion).apply()
+                                    }
                                     Result.success(chaptersToStoreInDb) // Return the newly parsed and saved chapters
                                 },
                                 onFailure = { parsingException ->
@@ -136,12 +173,54 @@ class BookRepository(private val context: Context) {
                         },
                         onFailure = { downloadException ->
                             Log.e("BookRepository", "Failed to download CSV for $languageCode.", downloadException)
+                            // If download fails, but we have old data, return the old data to prevent a blank screen.
+                            val chaptersFromDb = chapterDao.getChaptersByLanguage(languageCode)
+                            if (chaptersFromDb.isNotEmpty()) {
+                                Log.w("BookRepository", "Download failed, but returning stale data from DB to avoid blank screen.")
+                                return@fold Result.success(chaptersFromDb.sortedBy { it.serial.toIntOrNull() ?: Int.MAX_VALUE })
+                            }
                             Result.failure(downloadException)
                         }
                     )
                 }
             } catch (e: Exception) {
                 Log.e("BookRepository", "Error in getChaptersForLanguage for $languageCode", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Fetches the master version string for a given language from the 'versions' sheet.
+     */
+    private suspend fun getRemoteMasterVersion(languageCode: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            val url = getVersionsSheetUrl() ?: return@withContext Result.failure(Exception("Could not create URL for versions sheet"))
+            var connection: HttpURLConnection? = null
+            try {
+                connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 5000 // Use a shorter timeout for this small file
+                connection.readTimeout = 5000
+                connection.connect()
+
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val version = csvReader { skipEmptyLine = true }.open(connection.inputStream) {
+                        readAllAsSequence()
+                            .drop(1) // Skip header
+                            .firstOrNull { row -> row.size >= 2 && row[0].trim().equals(languageCode, ignoreCase = true) }
+                            ?.get(1)?.trim()
+                    }
+                    if (version != null) {
+                        Result.success(version)
+                    } else {
+                        Result.failure(Exception("Version not found for language '$languageCode' in versions sheet."))
+                    }
+                } else {
+                    Result.failure(Exception("Failed to download versions sheet: ${connection.responseCode}"))
+                }
+            } catch (e: Exception) {
+                Log.e("BookRepository", "Error fetching remote master version", e)
                 Result.failure(e)
             }
         }

@@ -5,10 +5,14 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Upsert
 import com.blackgrapes.kadachabuk.Chapter // Import your Chapter entity
 
 @Dao
 interface ChapterDao {
+
+    @Upsert
+    suspend fun upsertChapters(chapters: List<Chapter>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE) // Replace if a chapter with the same primary key (or unique index conflict) exists
     suspend fun insertChapters(chapters: List<Chapter>)

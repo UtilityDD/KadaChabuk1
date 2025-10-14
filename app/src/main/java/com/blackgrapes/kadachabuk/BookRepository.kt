@@ -148,12 +148,8 @@ class BookRepository(private val context: Context) {
 
                             parseResult.fold(
                                 onSuccess = { parsedChaptersWithoutLang ->
-                                    // Add languageCode to each Chapter object before DB insert
-                                    val chaptersToStoreInDb = parsedChaptersWithoutLang.map { chapter ->
-                                        // Ensure your Chapter data class has 'languageCode' as a var
-                                        // or use .copy() if it's a val and the constructor allows it.
-                                        chapter.copy(languageCode = languageCode)
-                                    }
+                                    // The languageCode is now part of the Chapter object from parsing.
+                                    val chaptersToStoreInDb = parsedChaptersWithoutLang
 
                                     // --- SMART UPDATE LOGIC ---
                                     // Get all existing chapters for this language from the DB to compare versions.
@@ -168,8 +164,9 @@ class BookRepository(private val context: Context) {
 
                                     if (chaptersToUpdate.isNotEmpty()) {
                                         Log.i("BookRepository", "Smart Update: Found ${chaptersToUpdate.size} new/updated chapters for $languageCode. Updating database.")
-                                        // Use the existing transaction-based replace function, but only with the chapters that need updating.
-                                        chapterDao.replaceChaptersForLanguage(languageCode, chaptersToUpdate)
+                                        // CORRECTED LOGIC: Instead of replacing all, we now "upsert" (update or insert) only the changed chapters.
+                                        // This leaves the unchanged chapters in the database untouched.
+                                        chapterDao.upsertChapters(chaptersToUpdate)
                                     } else {
                                         Log.i("BookRepository", "Smart Update: No new or changed chapters found for $languageCode. Database is already up-to-date.")
                                     }
@@ -332,7 +329,7 @@ class BookRepository(private val context: Context) {
                         // ...
                         if (row.size >= 6) {
                             val chapter = Chapter(
-                                // id and languageCode are handled elsewhere or by Room's defaults
+                                languageCode = languageCodeForLog, // Now part of the object creation
                                 heading = row.getOrElse(0) { "Unknown Heading" }.trim(),
                                 date = row.getOrElse(1) { "" }.trim().let { if (it.isNotEmpty()) it else null },
                                 writer = row.getOrElse(2) { "Unknown Writer" }.trim(),

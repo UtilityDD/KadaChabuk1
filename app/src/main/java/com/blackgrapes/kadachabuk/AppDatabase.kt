@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.blackgrapes.kadachabuk.Chapter
 
-@Database(entities = [Chapter::class], version = 1, exportSchema = false) // Increment version on schema changes
+@Database(entities = [Chapter::class], version = 3, exportSchema = false) // Incremented version due to schema change
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun chapterDao(): ChapterDao

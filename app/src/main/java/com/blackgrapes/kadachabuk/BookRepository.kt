@@ -155,15 +155,31 @@ class BookRepository(private val context: Context) {
                                         chapter.copy(languageCode = languageCode)
                                     }
 
-                                    // Replace existing chapters for this language in the DB
-                                    chapterDao.replaceChaptersForLanguage(languageCode, chaptersToStoreInDb)
-                                    Log.i("BookRepository", "Database updated for $languageCode with ${chaptersToStoreInDb.size} chapters.")
+                                    // --- SMART UPDATE LOGIC ---
+                                    // Get all existing chapters for this language from the DB to compare versions.
+                                    val existingChapters = chapterDao.getChaptersByLanguage(languageCode)
+                                    val existingChapterMap = existingChapters.associateBy { it.serial }
+
+                                    val chaptersToUpdate = chaptersToStoreInDb.filter { newChapter ->
+                                        val existingChapter = existingChapterMap[newChapter.serial]
+                                        // Update if the chapter is new (not in the map) or if the version is different.
+                                        existingChapter == null || existingChapter.version != newChapter.version
+                                    }
+
+                                    if (chaptersToUpdate.isNotEmpty()) {
+                                        Log.i("BookRepository", "Smart Update: Found ${chaptersToUpdate.size} new/updated chapters for $languageCode. Updating database.")
+                                        // Use the existing transaction-based replace function, but only with the chapters that need updating.
+                                        chapterDao.replaceChaptersForLanguage(languageCode, chaptersToUpdate)
+                                    } else {
+                                        Log.i("BookRepository", "Smart Update: No new or changed chapters found for $languageCode. Database is already up-to-date.")
+                                    }
 
                                     // On successful update, save the new master version
                                     if (remoteVersion != null) {
                                         versionPrefs.edit().putString("version_$languageCode", remoteVersion).apply()
                                     }
-                                    Result.success(chaptersToStoreInDb) // Return the newly parsed and saved chapters
+                                    // Return the full, sorted list of chapters for the UI.
+                                    Result.success(chapterDao.getChaptersByLanguage(languageCode).sortedBy { it.serial.toIntOrNull() ?: Int.MAX_VALUE })
                                 },
                                 onFailure = { parsingException ->
                                     Log.e("BookRepository", "Failed to parse CSV for $languageCode after download.", parsingException)

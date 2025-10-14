@@ -71,7 +71,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     // implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0") // Keep if used elsewhere
-
+    // Add these lines for Markwon (Markdown rendering)
+    implementation ("io.noties.markwon:core:4.6.2")
+    implementation ("io.noties.markwon:ext-tables:4.6.2")
+    implementation ("io.noties.markwon:linkify:4.6.2") // For clickable links
     // Room components
     val roomVersion = "2.6.1" // Use the latest stable version
     implementation("androidx.room:room-runtime:$roomVersion")

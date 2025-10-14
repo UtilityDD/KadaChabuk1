@@ -48,6 +48,9 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
+import io.noties.markwon.Markwon
+import io.noties.markwon.ext.tables.TablePlugin
+import io.noties.markwon.linkify.LinkifyPlugin
 import kotlin.random.Random // <-- IMPORT THIS
 import java.util.concurrent.TimeUnit
 
@@ -146,7 +149,16 @@ class DetailActivity : AppCompatActivity() {
 
         textViewHeading.text = chapterHeading
         textViewDate.text = chapterDate?.removeSurrounding("(", ")")
-        textViewData.text = dataContent
+
+        // --- MARKDOWN RENDERING ---
+        // 1. Create a Markwon instance (with table and link support)
+        val markwon = Markwon.builder(this)
+            .usePlugin(TablePlugin.create(this))
+            .usePlugin(LinkifyPlugin.create()) // This enables clickable links
+            .build()
+        // 2. Set the markdown content to the TextView
+        markwon.setMarkdown(textViewData, dataContent ?: "")
+
         title = chapterHeading ?: "Details"
 
         loadAndApplyFontSize()
@@ -612,8 +624,9 @@ class DetailActivity : AppCompatActivity() {
             return // No query to highlight
         }
 
-        val fullText = textViewData.text.toString()
-        val spannableString = SpannableString(fullText)
+        // Work with the existing Spannable text to preserve Markdown formatting
+        val spannable = SpannableStringBuilder(textViewData.text)
+        val fullText = spannable.toString()
         val highlightColor = ContextCompat.getColor(this, R.color.highlight_color) // Make sure to define this color
 
         matchIndices.clear()
@@ -621,11 +634,11 @@ class DetailActivity : AppCompatActivity() {
         while (index >= 0) {
             matchIndices.add(index)
             val span = BackgroundColorSpan(highlightColor)
-            spannableString.setSpan(span, index, index + searchQuery.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(span, index, index + searchQuery.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             index = fullText.indexOf(searchQuery, index + searchQuery.length, ignoreCase = true)
         }
 
-        textViewData.text = spannableString
+        textViewData.text = spannable
         
         if (matchIndices.isNotEmpty()) {
             currentMatchIndex = 0

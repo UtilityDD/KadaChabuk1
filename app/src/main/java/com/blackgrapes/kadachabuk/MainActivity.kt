@@ -19,6 +19,7 @@ import android.view.MenuItem
 import android.widget.Button
 import androidx.core.graphics.ColorUtils
 import android.widget.CheckBox
+import android.widget.ProgressBar
 import android.view.animation.AnimationUtils
 import android.view.ViewGroup
 import androidx.cursoradapter.widget.SimpleCursorAdapter
@@ -67,8 +68,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recyclerViewChapters: RecyclerView
 
     private lateinit var loadingGroup: Group
-    private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var tvLoadingStatus: TextView
+    private lateinit var progressBar: ProgressBar
+    private lateinit var tvProgressPercentage: TextView
     private lateinit var rvDownloadedChapterHeadings: RecyclerView
     private lateinit var searchSummaryTextView: TextView
     private lateinit var errorGroup: Group
@@ -165,8 +167,9 @@ class MainActivity : AppCompatActivity() {
     private fun initializeViews() {
         recyclerViewChapters = findViewById(R.id.recyclerViewChapters)
         loadingGroup = findViewById(R.id.loading_group)
-        lottieAnimationView = findViewById(R.id.lottie_animation_view)
         tvLoadingStatus = findViewById(R.id.tv_loading_status)
+        progressBar = findViewById(R.id.progress_bar)
+        tvProgressPercentage = findViewById(R.id.tv_progress_percentage)
         rvDownloadedChapterHeadings = findViewById(R.id.rv_downloaded_chapter_headings)
         errorGroup = findViewById(R.id.error_group)
         errorMessageTextView = findViewById(R.id.error_message)
@@ -174,7 +177,6 @@ class MainActivity : AppCompatActivity() {
         noResultsGroup = findViewById(R.id.no_results_group) // Changed to the new group ID
         retryButton = findViewById(R.id.retry_button)
         fabBookmarks = findViewById(R.id.fab_bookmarks)
-        lottieAnimationView.loop(true)
     }
 
     private fun loadLanguageArrays() {
@@ -596,24 +598,17 @@ class MainActivity : AppCompatActivity() {
             fabBookmarks.alpha = if (isLoading) 0.5f else 1.0f
 
             if (isLoading) {
-                if (tvLoadingStatus.text.isNullOrEmpty() || bookViewModel.loadingStatusMessage.value.isNullOrEmpty()) {
-                    tvLoadingStatus.text = getString(R.string.loading_status_default)
-                }
+                // When loading starts, ensure the progress bar is indeterminate (spinning)
+                // and the percentage text is hidden. The downloadProgress observer will handle showing it.
+                progressBar.isIndeterminate = true 
                 loadingGroup.visibility = View.VISIBLE
-                if (!lottieAnimationView.isAnimating) {
-                    lottieAnimationView.playAnimation()
-                }
+                tvProgressPercentage.visibility = View.GONE
                 rvDownloadedChapterHeadings.visibility = View.VISIBLE // Show progress list
                 recyclerViewChapters.visibility = View.GONE
                 hideNoResultsView()
             } else {
                 loadingGroup.visibility = View.GONE
-                if (lottieAnimationView.isAnimating) {
-                    lottieAnimationView.cancelAnimation()
-                }
                 rvDownloadedChapterHeadings.visibility = View.GONE // Hide progress list
-                // The logic to show/hide "no results" is now primarily handled by the chapters observer,
-                // which is the source of truth. This prevents a flicker when loading finishes.
                 // When loading is finished, ensure the main content or error is visible.
                 if (bookViewModel.error.value == null && chapterAdapter.itemCount > 0) {
                     recyclerViewChapters.visibility = View.VISIBLE
@@ -655,8 +650,22 @@ class MainActivity : AppCompatActivity() {
                 downloadedHeadingsAdapter.updateList(downloadingList)
                 if (downloadingList.isNotEmpty()) {
                     rvDownloadedChapterHeadings.smoothScrollToPosition(downloadedHeadingsAdapter.itemCount - 1)
-                    tvLoadingStatus.text = "Downloading ${downloadingList.last().heading}"
+                    tvLoadingStatus.text = "Preparing (${downloadingList.last().heading})"
                 }
+            }
+        }
+
+        bookViewModel.downloadProgress.observe(this) { progress ->
+            if (progress > 0) {
+                // We have actual progress, switch to determinate mode and show percentage.
+                progressBar.isIndeterminate = false
+                tvProgressPercentage.visibility = View.VISIBLE
+                progressBar.progress = progress
+                tvProgressPercentage.text = "$progress%"
+            } else {
+                // Progress is 0 or not started, ensure we are in indeterminate mode.
+                progressBar.isIndeterminate = true
+                tvProgressPercentage.visibility = View.GONE
             }
         }
 

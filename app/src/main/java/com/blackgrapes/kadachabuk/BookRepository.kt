@@ -2,7 +2,6 @@ package com.blackgrapes.kadachabuk
 
 import android.content.Context
 import android.util.Log
-// Imports for Room database components
 import com.blackgrapes.kadachabuk.AppDatabase // Ensure this path is correct
 // import com.blackgrapes.kadachabuk.ChapterDao // DAO is accessed via AppDatabase instance
 // import com.blackgrapes.kadachabuk.Chapter // Your Chapter entity
@@ -12,9 +11,22 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.FileReader
 import java.io.InputStream
+import java.io.FilterInputStream
 import java.net.HttpURLConnection
 import java.net.URL
+
+data class DownloadProgress(
+    val chapter: Chapter,
+    val current: Int,
+    val total: Int
+) {
+    val percentage: Int
+        get() = if (total > 0) {
+            (current * 100 / total)
+        } else 0
+}
 
 // Base part of the Google Sheet publish URL (before gid)
 private const val GOOGLE_SHEET_BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRztE9nSnn54KQxwLlLMNgk-v1QjfC-AVy35OyBZPFssRt1zSkgrdX1Xi92oW9i3pkx4HV4AZjclLzF/pub"
@@ -111,7 +123,7 @@ class BookRepository(private val context: Context) {
     suspend fun getChaptersForLanguage(
         languageCode: String,
         forceRefreshFromServer: Boolean = false,
-        onChapterParsed: (Chapter) -> Unit = {} // Callback for progress
+        onProgress: (DownloadProgress) -> Unit = {} // Callback for progress
     ): Result<List<Chapter>> {
         return withContext(Dispatchers.IO) {
             try {
@@ -149,50 +161,55 @@ class BookRepository(private val context: Context) {
                         Log.i("BookRepository", "New version available for $languageCode. Remote: v$remoteVersion, Local: v$localVersion. Downloading...")
                     }
 
-                    // Download the CSV to a temporary file
+                    // Download the CSV to a temporary file first
                     val downloadResult = downloadCsvToTempFile(languageCode)
 
                     downloadResult.fold(
-                        onSuccess = { tempCsvFileStream ->
+                        onSuccess = { tempCsvFile ->
                             Log.d("BookRepository", "CSV downloaded to temp file for $languageCode. Parsing and updating DB.")
-                            // Parse the CSV stream from the temporary file
-                            val parseResult = parseCsvStreamInternal(languageCode, tempCsvFileStream, onChapterParsed)
+                            val totalChapters = countCsvLines(tempCsvFile)
 
-                            // Clean up: Close the stream and delete the temp file
-                            try { tempCsvFileStream.close() } catch (e: Exception) { Log.e("BookRepository", "Error closing temp file stream", e) }
-                            getTemporaryCsvFile(languageCode).delete()
+                            // Parse the CSV stream from the temporary file
+                            val parseResult = parseCsvStreamInternal(
+                                languageCodeForLog = languageCode,
+                                csvInputStream = FileInputStream(tempCsvFile),
+                                totalChapters = totalChapters,
+                                onProgress = onProgress
+                            )
+
+                            tempCsvFile.delete() // Clean up the temp file
 
                             parseResult.fold(
                                 onSuccess = { parsedChaptersWithoutLang ->
-                                    // The languageCode is now part of the Chapter object from parsing.
-                                    val chaptersToStoreInDb = parsedChaptersWithoutLang
+                            // The languageCode is now part of the Chapter object from parsing.
+                            val chaptersToStoreInDb = parsedChaptersWithoutLang
 
-                                    // --- SMART UPDATE LOGIC ---
-                                    // Get all existing chapters for this language from the DB to compare versions.
-                                    val existingChapters = chapterDao.getChaptersByLanguage(languageCode)
-                                    val existingChapterMap = existingChapters.associateBy { it.serial }
+                            // --- SMART UPDATE LOGIC ---
+                            // Get all existing chapters for this language from the DB to compare versions.
+                            val existingChapters = chapterDao.getChaptersByLanguage(languageCode)
+                            val existingChapterMap = existingChapters.associateBy { it.serial }
 
-                                    val chaptersToUpdate = chaptersToStoreInDb.filter { newChapter ->
-                                        val existingChapter = existingChapterMap[newChapter.serial]
-                                        // Update if the chapter is new (not in the map) or if the version is different.
-                                        existingChapter == null || existingChapter.version != newChapter.version
-                                    }
+                            val chaptersToUpdate = chaptersToStoreInDb.filter { newChapter ->
+                                val existingChapter = existingChapterMap[newChapter.serial]
+                                // Update if the chapter is new (not in the map) or if the version is different.
+                                existingChapter == null || existingChapter.version != newChapter.version
+                            }
 
-                                    if (chaptersToUpdate.isNotEmpty()) {
-                                        Log.i("BookRepository", "Smart Update: Found ${chaptersToUpdate.size} new/updated chapters for $languageCode. Updating database.")
-                                        // CORRECTED LOGIC: Instead of replacing all, we now "upsert" (update or insert) only the changed chapters.
-                                        // This leaves the unchanged chapters in the database untouched.
-                                        chapterDao.upsertChapters(chaptersToUpdate)
-                                    } else {
-                                        Log.i("BookRepository", "Smart Update: No new or changed chapters found for $languageCode. Database is already up-to-date.")
-                                    }
+                            if (chaptersToUpdate.isNotEmpty()) {
+                                Log.i("BookRepository", "Smart Update: Found ${chaptersToUpdate.size} new/updated chapters for $languageCode. Updating database.")
+                                // CORRECTED LOGIC: Instead of replacing all, we now "upsert" (update or insert) only the changed chapters.
+                                // This leaves the unchanged chapters in the database untouched.
+                                chapterDao.upsertChapters(chaptersToUpdate)
+                            } else {
+                                Log.i("BookRepository", "Smart Update: No new or changed chapters found for $languageCode. Database is already up-to-date.")
+                            }
 
-                                    // On successful update, save the new master version
-                                    if (remoteVersion != null) {
-                                        versionPrefs.edit().putString("version_$languageCode", remoteVersion).apply()
-                                    }
-                                    // Return the full, sorted list of chapters for the UI.
-                                    Result.success(chapterDao.getChaptersByLanguage(languageCode).sortedBy { it.serial.toIntOrNull() ?: Int.MAX_VALUE })
+                            // On successful update, save the new master version
+                            if (remoteVersion != null) {
+                                versionPrefs.edit().putString("version_$languageCode", remoteVersion).apply()
+                            }
+                            // Return the full, sorted list of chapters for the UI.
+                            Result.success(chapterDao.getChaptersByLanguage(languageCode).sortedBy { it.serial.toIntOrNull() ?: Int.MAX_VALUE })
                                 },
                                 onFailure = { parsingException ->
                                     Log.e("BookRepository", "Failed to parse CSV for $languageCode after download.", parsingException)
@@ -201,7 +218,7 @@ class BookRepository(private val context: Context) {
                             )
                         },
                         onFailure = { downloadException ->
-                            Log.e("BookRepository", "Failed to download CSV for $languageCode.", downloadException)
+                            Log.e("BookRepository", "Failed to download or parse CSV for $languageCode.", downloadException)
                             // If download fails, but we have old data, return the old data to prevent a blank screen.
                             val chaptersFromDb = chapterDao.getChaptersByLanguage(languageCode)
                             if (chaptersFromDb.isNotEmpty()) {
@@ -257,10 +274,10 @@ class BookRepository(private val context: Context) {
 
     /**
      * Downloads the CSV for the given language to a temporary local file.
-     * Returns a Result containing an InputStream to the temporary file.
-     * The caller is responsible for closing this InputStream and deleting the temp file.
+     * Returns a Result containing the File object.
+     * The caller is responsible for deleting the temp file.
      */
-    private suspend fun downloadCsvToTempFile(languageCode: String): Result<InputStream> {
+    private suspend fun downloadCsvToTempFile(languageCode: String): Result<File> {
         val downloadUrl = getCsvUrlForLanguage(languageCode)
             ?: return Result.failure(IllegalArgumentException("Could not construct URL for language: $languageCode"))
 
@@ -292,7 +309,7 @@ class BookRepository(private val context: Context) {
                 }
                 if (totalBytesRead > 0) {
                     Log.i("BookRepository", "CSV downloaded ($totalBytesRead bytes) to temp file: ${tempFile.absolutePath}")
-                    return Result.success(FileInputStream(tempFile))
+                    return Result.success(tempFile)
                 } else {
                     Log.w("BookRepository", "Downloaded CSV for $languageCode was empty.")
                     tempFile.delete()
@@ -316,10 +333,22 @@ class BookRepository(private val context: Context) {
      * Internal CSV parsing logic.
      * Parses the given InputStream and returns a list of Chapter objects (without languageCode set).
      */
+    private fun countCsvLines(file: File): Int {
+        return try {
+            FileReader(file).useLines { lines ->
+                // Subtract 1 for the header row
+                (lines.count() - 1).coerceAtLeast(0)
+            }
+        } catch (e: Exception) {
+            Log.e("BookRepository", "Could not count lines in CSV file", e)
+            0
+        }
+    }
     private suspend fun parseCsvStreamInternal(
         languageCodeForLog: String,
         csvInputStream: InputStream,
-        onChapterParsed: (Chapter) -> Unit // Accept the callback
+        totalChapters: Int,
+        onProgress: (DownloadProgress) -> Unit
     ): Result<List<Chapter>> {
         return try {
             Log.d("BookRepository", "Starting internal CSV parsing for $languageCodeForLog.")
@@ -354,7 +383,13 @@ class BookRepository(private val context: Context) {
                                 version = row.getOrElse(5) { "N/A" }.trim()
                             )
                             chapterList.add(chapter)
-                            onChapterParsed(chapter) // Invoke the callback with the newly parsed chapter
+                            // Invoke the callback with the newly parsed chapter and progress
+                            val progress = DownloadProgress(
+                                chapter = chapter,
+                                current = chapterList.size,
+                                total = totalChapters
+                            )
+                            onProgress(progress)
                         } else {
                             Log.w("BookRepository", "Skipping malformed CSV row for $languageCodeForLog (expected at least 6 columns, found ${row.size})")
                         }

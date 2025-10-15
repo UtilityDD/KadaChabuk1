@@ -28,6 +28,9 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
     private val _downloadingChaptersList = MutableLiveData<List<ChapterDownloadStatus>>()
     val downloadingChaptersList: LiveData<List<ChapterDownloadStatus>> = _downloadingChaptersList
 
+    private val _downloadProgress = MutableLiveData<Int>()
+    val downloadProgress: LiveData<Int> = _downloadProgress
+
     private val _aboutInfo = MutableLiveData<Result<String>>()
     val aboutInfo: LiveData<Result<String>> = _aboutInfo
 
@@ -52,18 +55,22 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
 
             if (needsInitialLoadingScreen) {
                 _isLoading.postValue(true)
+                _downloadProgress.postValue(0) // Start progress at 0
                 _downloadingChaptersList.postValue(emptyList()) // Clear previous list
-                _loadingStatusMessage.postValue("Loading chapters for $languageName...")
+                _loadingStatusMessage.postValue("Preparing download...")
                 _error.postValue(null)
                 Log.d("BookViewModel", "Showing loading screen for $languageName ($languageCode). Force refresh: $forceDownload")
             }
 
             // This will run for both initial load and silent background updates.
             viewModelScope.launch {
-                val result = repository.getChaptersForLanguage(languageCode, forceDownload) { parsedChapter ->
-                    // This block is the callback, executed for each parsed chapter
+                val result = repository.getChaptersForLanguage(
+                    languageCode = languageCode,
+                    forceRefreshFromServer = forceDownload
+                ) { progress ->
+                    _downloadProgress.postValue(progress.percentage)
                     val currentList = _downloadingChaptersList.value ?: emptyList()
-                    val newItem = ChapterDownloadStatus(heading = parsedChapter.heading, isDownloaded = true)
+                    val newItem = ChapterDownloadStatus(heading = progress.chapter.heading, isDownloaded = true)
                     _downloadingChaptersList.postValue(currentList + newItem)
                 }
 
@@ -72,7 +79,7 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
                         Log.i("BookViewModel", "Successfully loaded/updated ${loadedChapters.size} chapters for $languageCode from repository.")
                         if (loadedChapters.isNotEmpty()) {
                             _chapters.postValue(loadedChapters) // This will update the UI with new data if any
-                            _loadingStatusMessage.postValue("Chapters loaded.")
+                            _loadingStatusMessage.postValue("Downlaoding chapters...")
                         } else {
                             _chapters.postValue(emptyList())
                             if (_error.value == null) {
@@ -93,6 +100,7 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
                 // Only hide the loading screen if it was shown in the first place.
                 if (needsInitialLoadingScreen) {
                     _isLoading.postValue(false)
+                    _downloadProgress.postValue(0) // Reset progress on completion
                 }
             }
         }

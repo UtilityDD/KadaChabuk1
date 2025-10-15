@@ -260,7 +260,7 @@ class MainActivity : AppCompatActivity() {
             // If a language is saved but no chapters are loaded (e.g., app was closed during initial load),
             // automatically resume fetching the chapters without showing a dialog.
             val langIndex = languageCodes.indexOf(savedLangCode)
-            bookViewModel.fetchAndLoadChapters(savedLangCode, languageNames[langIndex], forceDownload = false)
+            if (langIndex != -1) bookViewModel.fetchAndLoadChapters(savedLangCode, languageNames[langIndex], forceDownload = false)
         }
     }
 

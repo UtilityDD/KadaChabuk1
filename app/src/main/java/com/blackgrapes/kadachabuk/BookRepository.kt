@@ -87,6 +87,22 @@ class BookRepository(private val context: Context) {
     }
 
     /**
+     * Quickly fetches chapters for a language directly from the database without any network calls.
+     * Returns null if no chapters are found.
+     */
+    suspend fun getChaptersFromDb(languageCode: String): List<Chapter>? {
+        return withContext(Dispatchers.IO) {
+            if (chapterDao.getChapterCountForLanguage(languageCode) > 0) {
+                Log.i("BookRepository", "DB QUICK FETCH for $languageCode. Loading from database.")
+                val chaptersFromDb = chapterDao.getChaptersByLanguage(languageCode)
+                chaptersFromDb.sortedBy { it.serial.toIntOrNull() ?: Int.MAX_VALUE }
+            } else {
+                null
+            }
+        }
+    }
+
+    /**
      * Fetches chapters for the given language.
      * Checks the local Room database first. If data is found and forceRefresh is false,
      * it returns the cached data. Otherwise, it downloads the CSV, parses it,

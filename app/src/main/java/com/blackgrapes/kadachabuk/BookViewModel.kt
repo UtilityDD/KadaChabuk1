@@ -40,40 +40,61 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
         forceDownload: Boolean = false
     ) {
         viewModelScope.launch {
-            _isLoading.postValue(true)
-            _downloadingChaptersList.postValue(emptyList()) // Clear previous list
-            _loadingStatusMessage.postValue("Loading chapters for $languageName...")
-            _error.postValue(null)
-            Log.d("BookViewModel", "Requesting chapters for $languageName ($languageCode). Force refresh: $forceDownload")
+            // Try to load from DB first without showing a loading screen.
+            val chaptersFromDb = repository.getChaptersFromDb(languageCode)
+            val needsInitialLoadingScreen = chaptersFromDb.isNullOrEmpty() || forceDownload
 
-            val result = repository.getChaptersForLanguage(languageCode, forceDownload) { parsedChapter ->
-                // This block is the callback, executed for each parsed chapter
-                val currentList = _downloadingChaptersList.value ?: emptyList()
-                val newItem = ChapterDownloadStatus(heading = parsedChapter.heading, isDownloaded = true)
-                _downloadingChaptersList.postValue(currentList + newItem)
+            if (chaptersFromDb != null && !forceDownload) {
+                _chapters.postValue(chaptersFromDb)
+                Log.d("BookViewModel", "Instantly loaded ${chaptersFromDb.size} chapters from DB for $languageCode.")
+                // Now, check for updates silently in the background.
             }
 
-            result.fold(
-                onSuccess = { loadedChapters -> // Renamed to avoid confusion with the LiveData
-                    Log.i("BookViewModel", "Successfully loaded ${loadedChapters.size} chapters for $languageCode from repository.")
-                    if (loadedChapters.isNotEmpty()) {
-                        _chapters.postValue(loadedChapters)
-                        _loadingStatusMessage.postValue("Chapters loaded.")
-                    } else {
-                        _chapters.postValue(emptyList())
-                        if (_error.value == null) {
-                            _loadingStatusMessage.postValue("No chapters found for ${languageCode.uppercase()}.")
+            if (needsInitialLoadingScreen) {
+                _isLoading.postValue(true)
+                _downloadingChaptersList.postValue(emptyList()) // Clear previous list
+                _loadingStatusMessage.postValue("Loading chapters for $languageName...")
+                _error.postValue(null)
+                Log.d("BookViewModel", "Showing loading screen for $languageName ($languageCode). Force refresh: $forceDownload")
+            }
+
+            // This will run for both initial load and silent background updates.
+            viewModelScope.launch {
+                val result = repository.getChaptersForLanguage(languageCode, forceDownload) { parsedChapter ->
+                    // This block is the callback, executed for each parsed chapter
+                    val currentList = _downloadingChaptersList.value ?: emptyList()
+                    val newItem = ChapterDownloadStatus(heading = parsedChapter.heading, isDownloaded = true)
+                    _downloadingChaptersList.postValue(currentList + newItem)
+                }
+
+                result.fold(
+                    onSuccess = { loadedChapters ->
+                        Log.i("BookViewModel", "Successfully loaded/updated ${loadedChapters.size} chapters for $languageCode from repository.")
+                        if (loadedChapters.isNotEmpty()) {
+                            _chapters.postValue(loadedChapters) // This will update the UI with new data if any
+                            _loadingStatusMessage.postValue("Chapters loaded.")
+                        } else {
+                            _chapters.postValue(emptyList())
+                            if (_error.value == null) {
+                                _loadingStatusMessage.postValue("No chapters found for ${languageCode.uppercase()}.")
+                            }
+                        }
+                    },
+                    onFailure = { exception ->
+                        Log.e("BookViewModel", "Failed to load chapters for $languageCode from repository", exception)
+                        // Only show error if we didn't already load from DB.
+                        if (needsInitialLoadingScreen) {
+                            _error.postValue("Error loading chapters: ${exception.localizedMessage}")
+                            _chapters.postValue(emptyList())
+                            _loadingStatusMessage.postValue(null)
                         }
                     }
-                },
-                onFailure = { exception ->
-                    Log.e("BookViewModel", "Failed to load chapters for $languageCode from repository", exception)
-                    _error.postValue("Error loading chapters: ${exception.localizedMessage}")
-                    _chapters.postValue(emptyList())
-                    _loadingStatusMessage.postValue(null)
+                )
+                // Only hide the loading screen if it was shown in the first place.
+                if (needsInitialLoadingScreen) {
+                    _isLoading.postValue(false)
                 }
-            )
-            _isLoading.postValue(false)
+            }
         }
     }
 

@@ -57,14 +57,27 @@
             tools:text="Date" />
 
         <TextView
+            android:id="@+id/textViewLastRead"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="• Last read"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorPrimary"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@+id/textViewDate"
+            app:layout_constraintStart_toEndOf="@+id/textViewDate"
+            app:layout_constraintTop_toTopOf="@+id/textViewDate" />
+
+        <TextView
             android:id="@+id/textViewHistory"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:drawableStart="@drawable/ic_history"
             android:drawablePadding="4dp"
             android:gravity="center_vertical"
-            android:textColor="?android:attr/textColorSecondary"
-            android:textSize="12sp"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@+id/textViewDate"

@@ -61,6 +61,7 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
         private val headingTextView: TextView = itemView.findViewById(R.id.textViewHeading)
         private val dateTextView: TextView = itemView.findViewById(R.id.textViewDate)
         private val historyTextView: TextView = itemView.findViewById(R.id.textViewHistory)
+        private val lastReadTextView: TextView = itemView.findViewById(R.id.textViewLastRead)
         val serialTextView: TextView = itemView.findViewById(R.id.textViewSerial)
 
         fun bind(chapter: Chapter, isLastRead: Boolean) {
@@ -85,6 +86,7 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
             // --- End of History Logic ---
 
             // Visually distinguish the last read chapter
+            lastReadTextView.visibility = if (isLastRead) View.VISIBLE else View.GONE
             if (isLastRead) {
                 // Example: Change stroke color and width
                 cardView.strokeWidth = 4 // Set a noticeable stroke width

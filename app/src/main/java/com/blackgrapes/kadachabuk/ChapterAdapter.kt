@@ -89,20 +89,23 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
                 historyTextView.alpha = 1f
                 historyTextView.translationX = 0f
                 historyTextView.rotationY = 0f
+                historyTextView.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0) // Hide icon initially
                 historyTextView.text = "Reading history" // Initial text
                 historyTextView.visibility = View.VISIBLE
 
                 // Animate to the actual data after a delay
                 historyTextView.postDelayed({
                     // Animate the initial text out (flip away)
-                    historyTextView.animate().rotationY(90f).alpha(0f).setDuration(200).withEndAction {
+                    historyTextView.animate().rotationY(90f).alpha(0f).setDuration(250).withEndAction {
                         // At the halfway point of the flip:
                         // 1. Change the text
                         historyTextView.text = finalHistoryText
-                        // 2. Set rotation to be on the other side (invisible)
+                        // 2. Set the icon to be visible with the new text
+                        historyTextView.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_history, 0, 0, 0)
+                        // 3. Set rotation to be on the other side (invisible)
                         historyTextView.rotationY = -90f
-                        // 3. Animate it back into view
-                        historyTextView.animate().rotationY(0f).alpha(1f).setDuration(200).start()
+                        // 4. Animate it back into view
+                        historyTextView.animate().rotationY(0f).alpha(1f).setDuration(250).start()
                     }.start()
                 }, 800) // 0.8-second delay
             }

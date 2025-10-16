@@ -566,23 +566,25 @@ class MainActivity : AppCompatActivity() {
         val historyPrefs = getSharedPreferences("ReadingHistoryPrefs", Context.MODE_PRIVATE)
         val isHistoryVisible = historyPrefs.getBoolean("is_history_visible", true)
         val toggleOptionText = if (isHistoryVisible) "Hide History" else "Show History"
- 
+
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         val dialogView = layoutInflater.inflate(R.layout.dialog_history_options, null)
+        dialog.setContentView(dialogView)
+        dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.attributes?.windowAnimations = R.style.DialogAnimation
+
         val resetOption = dialogView.findViewById<TextView>(R.id.option_reset_history)
         val toggleOption = dialogView.findViewById<TextView>(R.id.option_toggle_history)
- 
+
         toggleOption.text = toggleOptionText
- 
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("Reading History Options")
-            .setView(dialogView)
-            .create()
- 
+
         resetOption.setOnClickListener {
             showResetHistoryConfirmationDialog()
             dialog.dismiss()
         }
- 
+
         toggleOption.setOnClickListener {
             val newVisibility = !isHistoryVisible
             historyPrefs.edit().putBoolean("is_history_visible", newVisibility).apply()
@@ -591,7 +593,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "History is now ${if (newVisibility) "shown" else "hidden"}", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
         }
- 
+
         dialog.show()
     }
 

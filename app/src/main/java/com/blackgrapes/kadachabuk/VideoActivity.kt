@@ -156,7 +156,6 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
             },
             { error ->
                 progressBar.visibility = View.GONE
-                errorMessageTextView.text = "Connect to internet to load videos"
                 errorGroup.visibility = View.VISIBLE
             })
 

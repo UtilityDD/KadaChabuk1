@@ -93,7 +93,8 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
                         Log.e("BookViewModel", "Failed to load chapters for $languageCode from repository", exception)
                         // Only show error if we didn't already load from DB.
                         if (needsInitialLoadingScreen) {
-                            _error.postValue("Error loading chapters: ${exception.localizedMessage}")
+                            val errorMessage = getApplication<Application>().getString(R.string.default_error_message)
+                            _error.postValue(errorMessage)
                             _chapters.postValue(emptyList())
                             _loadingStatusMessage.postValue(null)
                         }

@@ -227,7 +227,7 @@
         android:orientation="horizontal"
         android:padding="12dp"
         android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/search_navigation_layout"
+        app:layout_constraintBottom_toTopOf="@id/button_scroll_to_top"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         tools:alpha="1"

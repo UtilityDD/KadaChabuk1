@@ -86,4 +86,8 @@ dependencies {
     implementation("com.squareup.picasso:picasso:2.8")
     // Optional: For Room Paging 3 support (if you plan to use it later)
     // implementation("androidx.room:room-paging:$roomVersion")
+
+    // Glide for image loading (including GIFs)
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    kapt("com.github.bumptech.glide:compiler:4.16.0")
 }

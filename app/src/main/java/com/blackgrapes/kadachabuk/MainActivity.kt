@@ -15,10 +15,12 @@ import android.util.Log
 import android.view.View
 import android.widget.ScrollView
 import android.view.Menu
+import android.widget.ImageView
 import android.view.MenuItem
 import android.widget.Button
 import androidx.core.graphics.ColorUtils
 import android.widget.CheckBox
+import android.graphics.PorterDuff
 import android.widget.ProgressBar
 import android.view.animation.AnimationUtils
 import android.view.ViewGroup
@@ -32,6 +34,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.appbar.AppBarLayout
+import androidx.core.content.ContextCompat
 import androidx.constraintlayout.widget.Group
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -41,6 +44,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.app.ShareCompat
 import com.airbnb.lottie.LottieAnimationView
@@ -69,7 +73,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var loadingGroup: Group
     private lateinit var tvLoadingStatus: TextView
-    private lateinit var progressBar: ProgressBar
+    private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var tvProgressPercentage: TextView
     private lateinit var rvDownloadedChapterHeadings: RecyclerView
     private lateinit var searchSummaryTextView: TextView
@@ -168,7 +172,7 @@ class MainActivity : AppCompatActivity() {
         recyclerViewChapters = findViewById(R.id.recyclerViewChapters)
         loadingGroup = findViewById(R.id.loading_group)
         tvLoadingStatus = findViewById(R.id.tv_loading_status)
-        progressBar = findViewById(R.id.progress_bar)
+        lottieAnimationView = findViewById(R.id.lottie_animation_view)
         tvProgressPercentage = findViewById(R.id.tv_progress_percentage)
         rvDownloadedChapterHeadings = findViewById(R.id.rv_downloaded_chapter_headings)
         errorGroup = findViewById(R.id.error_group)
@@ -599,14 +603,15 @@ class MainActivity : AppCompatActivity() {
 
             if (isLoading) {
                 // When loading starts, ensure the progress bar is indeterminate (spinning)
-                // and the percentage text is hidden. The downloadProgress observer will handle showing it.
-                progressBar.isIndeterminate = true 
+                // and the percentage text is hidden.
+                lottieAnimationView.playAnimation()
                 loadingGroup.visibility = View.VISIBLE
                 tvProgressPercentage.visibility = View.GONE
                 rvDownloadedChapterHeadings.visibility = View.VISIBLE // Show progress list
-                recyclerViewChapters.visibility = View.GONE
+                recyclerViewChapters.visibility = View.GONE 
                 hideNoResultsView()
             } else {
+                lottieAnimationView.cancelAnimation()
                 loadingGroup.visibility = View.GONE
                 rvDownloadedChapterHeadings.visibility = View.GONE // Hide progress list
                 // When loading is finished, ensure the main content or error is visible.
@@ -655,23 +660,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        bookViewModel.downloadProgress.observe(this) { progress ->
-            if (progress > 0) {
-                // We have actual progress, switch to determinate mode and show percentage.
-                progressBar.isIndeterminate = false
-                tvProgressPercentage.visibility = View.VISIBLE
-                progressBar.progress = progress
-                tvProgressPercentage.text = "$progress%"
-            } else {
-                // Progress is 0 or not started, ensure we are in indeterminate mode.
-                progressBar.isIndeterminate = true
-                tvProgressPercentage.visibility = View.GONE
-            }
-        }
-
         bookViewModel.aboutInfo.observe(this) { result ->
             result.onSuccess { aboutText ->
-                if (bookViewModel.isFetchingAboutForDialog.value == true) showAboutDialog(aboutText)
+                // Only show the dialog if the ViewModel has flagged that it's fetching for this purpose.
+                // This prevents the dialog from showing unexpectedly if the LiveData updates for another reason.
+                if (bookViewModel.isFetchingAboutForDialog.value == true) showAboutDialog(content = aboutText)
             }.onFailure {
                 // Optionally handle error, e.g., show a toast
                 Log.e("MainActivity", "Failed to get 'About' info", it)
@@ -680,12 +673,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAboutDialog(content: String? = null) {
-        bookViewModel.isFetchingAboutForDialog.value = true
+        // If content is not provided, it means we need to fetch it first.
         if (content == null) {
+            // Set a flag in the ViewModel indicating our intent to show the dialog once data arrives.
+            bookViewModel.isFetchingAboutForDialog.value = true
             val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
             val savedLangCode = sharedPreferences.getString("selected_language_code", null)
             savedLangCode?.let { bookViewModel.fetchAboutInfo(it, forceRefresh = false) }
-            return
+            return // Exit the function; the observer will call this function again with content.
         }
 
         val dialogView = layoutInflater.inflate(R.layout.dialog_about, null)

@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import kotlinx.coroutines.Dispatchers
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
@@ -27,9 +28,6 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _downloadingChaptersList = MutableLiveData<List<ChapterDownloadStatus>>()
     val downloadingChaptersList: LiveData<List<ChapterDownloadStatus>> = _downloadingChaptersList
-
-    private val _downloadProgress = MutableLiveData<Int>()
-    val downloadProgress: LiveData<Int> = _downloadProgress
 
     private val _aboutInfo = MutableLiveData<Result<String>>()
     val aboutInfo: LiveData<Result<String>> = _aboutInfo
@@ -55,7 +53,6 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
 
             if (needsInitialLoadingScreen) {
                 _isLoading.postValue(true)
-                _downloadProgress.postValue(0) // Start progress at 0
                 _downloadingChaptersList.postValue(emptyList()) // Clear previous list
                 _loadingStatusMessage.postValue("Preparing download...")
                 _error.postValue(null)
@@ -67,11 +64,12 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
                 val result = repository.getChaptersForLanguage(
                     languageCode = languageCode,
                     forceRefreshFromServer = forceDownload
-                ) { progress ->
-                    _downloadProgress.postValue(progress.percentage)
-                    val currentList = _downloadingChaptersList.value ?: emptyList()
-                    val newItem = ChapterDownloadStatus(heading = progress.chapter.heading, isDownloaded = true)
-                    _downloadingChaptersList.postValue(currentList + newItem)
+                ) { progress: DownloadProgress ->
+                    // This callback is now correctly executed for each parsed chapter
+                    viewModelScope.launch(Dispatchers.Main) {
+                        val newItem = ChapterDownloadStatus(heading = progress.chapter.heading, isDownloaded = true)
+                        _downloadingChaptersList.value = (_downloadingChaptersList.value ?: emptyList()) + newItem
+                    }
                 }
 
                 result.fold(
@@ -100,7 +98,6 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
                 // Only hide the loading screen if it was shown in the first place.
                 if (needsInitialLoadingScreen) {
                     _isLoading.postValue(false)
-                    _downloadProgress.postValue(0) // Reset progress on completion
                 }
             }
         }

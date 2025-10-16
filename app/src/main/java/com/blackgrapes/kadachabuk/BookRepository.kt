@@ -18,15 +18,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 data class DownloadProgress(
-    val chapter: Chapter,
-    val current: Int,
-    val total: Int
-) {
-    val percentage: Int
-        get() = if (total > 0) {
-            (current * 100 / total)
-        } else 0
-}
+    val chapter: Chapter)
 
 // Base part of the Google Sheet publish URL (before gid)
 private const val GOOGLE_SHEET_BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRztE9nSnn54KQxwLlLMNgk-v1QjfC-AVy35OyBZPFssRt1zSkgrdX1Xi92oW9i3pkx4HV4AZjclLzF/pub"
@@ -167,13 +159,11 @@ class BookRepository(private val context: Context) {
                     downloadResult.fold(
                         onSuccess = { tempCsvFile ->
                             Log.d("BookRepository", "CSV downloaded to temp file for $languageCode. Parsing and updating DB.")
-                            val totalChapters = countCsvLines(tempCsvFile)
 
                             // Parse the CSV stream from the temporary file
                             val parseResult = parseCsvStreamInternal(
                                 languageCodeForLog = languageCode,
                                 csvInputStream = FileInputStream(tempCsvFile),
-                                totalChapters = totalChapters,
                                 onProgress = onProgress
                             )
 
@@ -333,26 +323,13 @@ class BookRepository(private val context: Context) {
      * Internal CSV parsing logic.
      * Parses the given InputStream and returns a list of Chapter objects (without languageCode set).
      */
-    private fun countCsvLines(file: File): Int {
-        return try {
-            FileReader(file).useLines { lines ->
-                // Subtract 1 for the header row
-                (lines.count() - 1).coerceAtLeast(0)
-            }
-        } catch (e: Exception) {
-            Log.e("BookRepository", "Could not count lines in CSV file", e)
-            0
-        }
-    }
     private suspend fun parseCsvStreamInternal(
         languageCodeForLog: String,
         csvInputStream: InputStream,
-        totalChapters: Int,
         onProgress: (DownloadProgress) -> Unit
     ): Result<List<Chapter>> {
         return try {
             Log.d("BookRepository", "Starting internal CSV parsing for $languageCodeForLog.")
-            val parsedList = withContext(Dispatchers.IO) {
                 val chapterList = mutableListOf<Chapter>()
                 val isHeaderRow = { row: List<String> ->
                     row.any {
@@ -365,11 +342,7 @@ class BookRepository(private val context: Context) {
 
                 csvReader { skipEmptyLine = true }.open(csvInputStream) { // csvInputStream will be closed by this block
                     readAllAsSequence().forEachIndexed forEach@{ index, row ->
-                        // FIX: Simplify header check. Only skip the very first row if it's a header.
-                        if (index == 0 && isHeaderRow(row)) {
-                            return@forEach // Skip header row
-                        }
-                        // ...
+                        if (index == 0 && isHeaderRow(row)) return@forEach // Skip header row
                         // ...
                         // ...
                         if (row.size >= 6) {
@@ -384,27 +357,17 @@ class BookRepository(private val context: Context) {
                             )
                             chapterList.add(chapter)
                             // Invoke the callback with the newly parsed chapter and progress
-                            val progress = DownloadProgress(
-                                chapter = chapter,
-                                current = chapterList.size,
-                                total = totalChapters
-                            )
+                            val progress = DownloadProgress(chapter = chapter)
                             onProgress(progress)
                         } else {
                             Log.w("BookRepository", "Skipping malformed CSV row for $languageCodeForLog (expected at least 6 columns, found ${row.size})")
                         }
-                        // ...
-
-                        // ...
-
-                        // ...
 
                     }
                 }
                 chapterList
-            }
-            Log.i("BookRepository", "Internal CSV parsing complete for $languageCodeForLog. Found ${parsedList.size} chapters.")
-            Result.success(parsedList)
+            Log.i("BookRepository", "Internal CSV parsing complete for $languageCodeForLog. Found ${chapterList.size} chapters.")
+            Result.success(chapterList)
         } catch (e: Exception) {
             Log.e("BookRepository", "Error during internal CSV parsing for $languageCodeForLog", e)
             Result.failure(e)

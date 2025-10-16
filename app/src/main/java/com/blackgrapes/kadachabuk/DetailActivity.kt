@@ -10,6 +10,7 @@ import android.view.LayoutInflater
 import android.content.Context
 import android.os.Build
 import android.graphics.Color // <-- IMPORT THIS
+import android.view.MotionEvent
 import android.os.Bundle
 import android.view.animation.DecelerateInterpolator
 import android.view.ActionMode
@@ -94,6 +95,7 @@ class DetailActivity : AppCompatActivity() {
     private var sessionStartTime: Long = 0
     private var currentMatchIndex = -1
 
+    private var scrollAnimator: ValueAnimator? = null
     // Array of your drawable resource IDs
     private val headerImageDrawables = intArrayOf(
         R.drawable.thakur1, // Replace with your actual drawable names
@@ -184,18 +186,30 @@ class DetailActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
+        // Add a touch listener to cancel animations on user interaction.
+        scrollView.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_DOWN) {
+                scrollAnimator?.cancel()
+            }
+            false // Return false to not consume the event, allowing normal scroll.
+        }
+
         scrollToTopButton.setOnClickListener {
+            // Cancel any ongoing scroll animation before starting a new one.
+            scrollAnimator?.cancel()
+
             // Animate the scroll to the top with an ease-out effect
             val currentScrollY = scrollView.scrollY
             if (currentScrollY > 0) {
-                val animator = ValueAnimator.ofInt(currentScrollY, 0)
-                animator.duration = 1200L // Increased duration for a more pronounced slow-down
-                animator.interpolator = DecelerateInterpolator(3.0f) // Higher factor for a more dramatic ease-in at the end
-                animator.addUpdateListener { animation ->
-                    val animatedValue = animation.animatedValue as Int
-                    scrollView.scrollTo(0, animatedValue)
+                scrollAnimator = ValueAnimator.ofInt(currentScrollY, 0).apply {
+                    duration = 1200L // Increased duration for a more pronounced slow-down
+                    interpolator = DecelerateInterpolator(3.0f) // Higher factor for a more dramatic ease-in at the end
+                    addUpdateListener { animation ->
+                        val animatedValue = animation.animatedValue as Int
+                        scrollView.scrollTo(0, animatedValue)
+                    }
+                    start()
                 }
-                animator.start()
             }
         }
 
@@ -497,17 +511,23 @@ class DetailActivity : AppCompatActivity() {
                 MaterialAlertDialogBuilder(this)
                     .setView(customView)
                     .setPositiveButton("Yes") { dialog, _ ->
-                        // Use a ValueAnimator for a smoother, decelerating scroll.
+                        // Cancel any other ongoing scroll animation before starting this one.
+                        scrollAnimator?.cancel()
+
                         scrollView.post {
-                            val startScrollY = scrollView.scrollY
-                            val animator = ValueAnimator.ofInt(startScrollY, savedScrollY)
-                            animator.duration = 1200L // A longer duration for a graceful scroll
-                            animator.interpolator = DecelerateInterpolator(3.0f) // Slows down significantly at the end
-                            animator.addUpdateListener { animation ->
-                                val animatedValue = animation.animatedValue as Int
-                                scrollView.scrollTo(0, animatedValue)
+                            // Cancel any ongoing scroll animation.
+                            scrollAnimator?.cancel()
+
+                            // Use a ValueAnimator for a smoother, decelerating scroll.
+                            scrollAnimator = ValueAnimator.ofInt(scrollView.scrollY, savedScrollY).apply {
+                                duration = 1200L // A longer duration for a graceful scroll
+                                interpolator = DecelerateInterpolator(3.0f) // Slows down significantly at the end
+                                addUpdateListener { animation ->
+                                    val animatedValue = animation.animatedValue as Int
+                                    scrollView.scrollTo(0, animatedValue)
+                                }
+                                start()
                             }
-                            animator.start()
                             highlightLineAt(savedScrollY) // Add the highlight animation
                         }
                         dialog.dismiss()

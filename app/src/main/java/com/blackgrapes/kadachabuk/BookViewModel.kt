@@ -38,8 +38,12 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
     private val _contributors = MutableLiveData<Result<List<Contributor>>>()
     val contributors: LiveData<Result<List<Contributor>>> = _contributors
 
+    private val _showCreditsDialogEvent = SingleLiveEvent<Result<List<Contributor>>>()
+    val showCreditsDialogEvent: LiveData<Result<List<Contributor>>> = _showCreditsDialogEvent
+
     var hasShownInitialAboutDialog = false
     val isFetchingAboutForDialog = MutableLiveData<Boolean>(false)
+    private var cachedContributors: List<Contributor>? = null
 
     fun fetchAndLoadChapters(
         languageCode: String,
@@ -56,6 +60,9 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
                 Log.d("BookViewModel", "Instantly loaded ${chaptersFromDb.size} chapters from DB for $languageCode.")
                 // Now, check for updates silently in the background.
             }
+
+            // Pre-warm the contributors cache in the background.
+            fetchContributors(forceRefresh = false, isSilent = true)
 
             if (needsInitialLoadingScreen) {
                 _isLoading.postValue(true)
@@ -118,9 +125,29 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun fetchContributors() {
+    fun fetchContributors(forceRefresh: Boolean = false, isSilent: Boolean = false) {
         viewModelScope.launch {
-            _contributors.postValue(repository.getContributors())
+            // If we have a cached list and we are not forcing a refresh, show it immediately
+            // unless it's a silent pre-fetch.
+            if (cachedContributors != null && !forceRefresh) {
+                val result = Result.success(cachedContributors!!)
+                _contributors.postValue(result) // Always update the underlying LiveData
+                if (!isSilent) { // Only trigger event if not silent
+                    _showCreditsDialogEvent.postValue(result)
+                }
+                // We don't need to trigger a background refresh here, as the repository handles caching and freshness.
+                // The main purpose of this block is to quickly provide the cached data.
+                return@launch
+            }
+
+            // Fetch from repository (which will use its own cache or network)
+            Log.d("BookViewModel", "Fetching contributors. Silent: $isSilent, Force: $forceRefresh")
+            val result = repository.getContributors(forceRefresh)
+            result.onSuccess { cachedContributors = it }
+            _contributors.postValue(result) // Always update the underlying LiveData
+            if (!isSilent) { // Only trigger event if not silent
+                _showCreditsDialogEvent.postValue(result)
+            }
         }
     }
 

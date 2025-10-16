@@ -522,15 +522,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_language_change -> {
-                showLanguageSelectionDialog(isCancelable = true)
-                true
-            }
-            R.id.action_reading_history -> {
-                showReadingHistoryOptionsDialog()
-                true
-            }
+        when (item.itemId) {
             R.id.action_theme_toggle -> {
                 val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
                 val newNightMode = if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
@@ -542,28 +534,36 @@ class MainActivity : AppCompatActivity() {
                 getSharedPreferences("ThemePrefs", Context.MODE_PRIVATE).edit().putInt("NightMode", newNightMode).apply()
                 return true
             }
+            R.id.action_language_change -> {
+                showLanguageSelectionDialog(isCancelable = true)
+                return true
+            }
+            R.id.action_reading_history -> {
+                showReadingHistoryOptionsDialog()
+                return true
+            }
             R.id.action_share_app -> {
                 shareApp()
-                true
+                return true
             }
             R.id.action_my_notes -> {
                 startActivity(Intent(this, MyNotesActivity::class.java))
-                true
+                return true
             }
             R.id.action_videos -> {
                 startActivity(Intent(this, VideoActivity::class.java))
-                true
+                return true
             }
             R.id.action_about -> {
                 showAboutDialog()
-                true
+                return true
             }
             R.id.action_credits -> {
-                bookViewModel.fetchContributors()
-                true
+                bookViewModel.fetchContributors(forceRefresh = true, isSilent = false) // Force refresh on explicit click
+                return true
             }
-            else -> super.onOptionsItemSelected(item)
         }
+        return super.onOptionsItemSelected(item)
     }
 
     private fun showReadingHistoryOptionsDialog() {
@@ -825,12 +825,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        bookViewModel.contributors.observe(this) { result ->
+        // Observe the event that triggers the Credits dialog
+        bookViewModel.showCreditsDialogEvent.observe(this) { result ->
             result.onSuccess { contributorList ->
                 showContributorsDialog(contributorList)
             }.onFailure {
                 Toast.makeText(this, "Could not load credits.", Toast.LENGTH_SHORT).show()
                 Log.e("MainActivity", "Failed to get contributors", it)
+                // Optionally, you might want to show a cached version if available and not silent
             }
         }
     }
@@ -920,12 +922,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showContributorsDialog(contributors: List<Contributor>) {
-        val items = contributors.map { "${it.name}, ${it.address}" }.toTypedArray()
+        if (contributors.isEmpty()) {
+            Toast.makeText(this, "No contributors to show at the moment.", Toast.LENGTH_SHORT).show()
+            return
+        }
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Credits")
-            .setItems(items, null)
-            .setPositiveButton("Close", null)
-            .show()
+        val dialogView = layoutInflater.inflate(R.layout.dialog_credits, null)
+
+        val rvContributors = dialogView.findViewById<RecyclerView>(R.id.rv_contributors)
+        rvContributors.layoutManager = LinearLayoutManager(this)
+        rvContributors.adapter = ContributorAdapter(contributors)
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(dialogView)
+            .setPositiveButton("OK", null)
+            .create()
+
+        // Apply custom animation
+        dialog.window?.attributes?.windowAnimations = R.style.DialogAnimation
+
+        dialog.show()
     }
 }

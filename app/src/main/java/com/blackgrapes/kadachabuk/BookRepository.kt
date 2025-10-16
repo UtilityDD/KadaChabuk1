@@ -26,6 +26,7 @@ private const val GOOGLE_SHEET_BASE_URL = "https://docs.google.com/spreadsheets/
 private const val GOOGLE_SHEET_URL_SUFFIX = "&single=true&output=csv"
 private const val ABOUT_GID = "1925993700"
 private const val CONTRIBUTORS_GID = "1786621690"
+private const val CONTRIBUTORS_PREFS = "ContributorsPrefs"
 
 // --- PREFERENCES KEYS ---
 private const val ABOUT_INFO_PREFS = "AboutInfoPrefs"
@@ -441,24 +442,46 @@ class BookRepository(private val context: Context) {
     // The old getChapterCsvInputStream and downloadAndSaveCsv can now be removed
     // if getChaptersForLanguage is the sole entry point for fetching chapter data.
     // If you need to keep them for other purposes, you can, but they are not used
-    // by the getChaptersForLanguage method above.    
-    suspend fun getContributors(): Result<List<Contributor>> {
+    // by the getChaptersForLanguage method above.
+    suspend fun getContributors(forceRefresh: Boolean = false): Result<List<Contributor>> {
         return withContext(Dispatchers.IO) {
+            val prefs = context.getSharedPreferences(CONTRIBUTORS_PREFS, Context.MODE_PRIVATE)
+            val cacheKey = "contributors_list"
+
+            if (!forceRefresh) {
+                val cachedJson = prefs.getString(cacheKey, null)
+                if (cachedJson != null) {
+                    Log.d("BookRepository", "CACHE HIT for contributors list.")
+                    return@withContext Result.success(parseContributorsJson(cachedJson))
+                }
+            }
+
+            Log.d("BookRepository", "CACHE MISS for contributors list. Fetching from network.")
             try {
                 val url = getContributorsSheetUrl() ?: return@withContext Result.failure(Exception("Could not create URL for contributors sheet"))
                 val connection = url.openConnection() as HttpURLConnection
                 connection.requestMethod = "GET"
                 connection.connect()
-    
+
                 if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                     val contributors = parseContributorsCsv(connection.inputStream)
+                    // Cache the result
+                    val jsonToCache = contributorsToJson(contributors)
+                    prefs.edit().putString(cacheKey, jsonToCache).apply()
+                    Log.d("BookRepository", "Saved contributors list to cache.")
                     Result.success(contributors)
                 } else {
                     Result.failure(Exception("Failed to download contributors sheet: ${connection.responseCode}"))
                 }
             } catch (e: Exception) {
                 Log.e("BookRepository", "Error fetching contributors", e)
-                Result.failure(e)
+                // If network fails, try to return from cache as a last resort
+                val cachedJson = prefs.getString(cacheKey, null)
+                if (cachedJson != null) {
+                    Result.success(parseContributorsJson(cachedJson))
+                } else {
+                    Result.failure(e)
+                }
             }
         }
     }
@@ -476,6 +499,27 @@ class BookRepository(private val context: Context) {
                     )
                 }
             }
+        }
+        return contributors
+    }
+
+    private fun contributorsToJson(contributors: List<Contributor>): String {
+        val jsonArray = org.json.JSONArray()
+        contributors.forEach {
+            val jsonObject = org.json.JSONObject()
+            jsonObject.put("name", it.name)
+            jsonObject.put("address", it.address)
+            jsonArray.put(jsonObject)
+        }
+        return jsonArray.toString()
+    }
+
+    private fun parseContributorsJson(jsonString: String): List<Contributor> {
+        val contributors = mutableListOf<Contributor>()
+        val jsonArray = org.json.JSONArray(jsonString)
+        for (i in 0 until jsonArray.length()) {
+            val jsonObject = jsonArray.getJSONObject(i)
+            contributors.add(Contributor(jsonObject.getString("name"), jsonObject.getString("address")))
         }
         return contributors
     }

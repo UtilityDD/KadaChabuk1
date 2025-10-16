@@ -11,6 +11,7 @@ import android.content.Context
 import android.os.Build
 import android.graphics.Color // <-- IMPORT THIS
 import android.os.Bundle
+import android.view.animation.DecelerateInterpolator
 import android.view.ActionMode
 import android.view.View
 import android.view.ViewGroup
@@ -184,7 +185,18 @@ class DetailActivity : AppCompatActivity() {
         }
 
         scrollToTopButton.setOnClickListener {
-            scrollView.smoothScrollTo(0, 0)
+            // Animate the scroll to the top with an ease-out effect
+            val currentScrollY = scrollView.scrollY
+            if (currentScrollY > 0) {
+                val animator = ValueAnimator.ofInt(currentScrollY, 0)
+                animator.duration = 1200L // Increased duration for a more pronounced slow-down
+                animator.interpolator = DecelerateInterpolator(3.0f) // Higher factor for a more dramatic ease-in at the end
+                animator.addUpdateListener { animation ->
+                    val animatedValue = animation.animatedValue as Int
+                    scrollView.scrollTo(0, animatedValue)
+                }
+                animator.start()
+            }
         }
 
         val searchQuery = intent.getStringExtra("EXTRA_SEARCH_QUERY")

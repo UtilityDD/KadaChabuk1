@@ -75,16 +75,8 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
             val totalTimeMs = historyPrefs.getLong("time_$historyKeyBase", 0)
 
             if (count > 0) {
-                val hours = TimeUnit.MILLISECONDS.toHours(totalTimeMs)
-                val minutes = TimeUnit.MILLISECONDS.toMinutes(totalTimeMs) % 60
-
-                val timeString = when {
-                    hours > 0 -> "${hours}h ${minutes}m"
-                    minutes > 0 -> "${minutes}m"
-                    else -> "" // Don't show time if less than a minute
-                }
-
-                val historyText = if (timeString.isNotEmpty()) "$count / $timeString" else "$count"
+                val formattedTime = TimeUtils.formatDuration(totalTimeMs)
+                val historyText = "$count / $formattedTime"
                 historyTextView.text = historyText
                 historyTextView.visibility = View.VISIBLE
             } else {

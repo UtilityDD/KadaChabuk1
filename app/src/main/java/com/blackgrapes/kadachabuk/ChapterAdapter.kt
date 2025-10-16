@@ -88,21 +88,23 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
                 // Set initial text and make it visible
                 historyTextView.alpha = 1f
                 historyTextView.translationX = 0f
+                historyTextView.rotationY = 0f
                 historyTextView.text = "Reading history" // Initial text
                 historyTextView.visibility = View.VISIBLE
 
                 // Animate to the actual data after a delay
                 historyTextView.postDelayed({
-                    val slideDistance = historyTextView.width.toFloat()
-                    // Animate the initial text out to the left
-                    historyTextView.animate().alpha(0f).translationX(-slideDistance).setDuration(300).withEndAction {
-                        // Prepare the new text off-screen to the right
-                        historyTextView.translationX = slideDistance
+                    // Animate the initial text out (flip away)
+                    historyTextView.animate().rotationY(90f).alpha(0f).setDuration(200).withEndAction {
+                        // At the halfway point of the flip:
+                        // 1. Change the text
                         historyTextView.text = finalHistoryText
-                        // Animate the new text in from the right
-                        historyTextView.animate().alpha(1f).translationX(0f).setDuration(300).start()
+                        // 2. Set rotation to be on the other side (invisible)
+                        historyTextView.rotationY = -90f
+                        // 3. Animate it back into view
+                        historyTextView.animate().rotationY(0f).alpha(1f).setDuration(200).start()
                     }.start()
-                }, 1500) // 1.5-second delay
+                }, 800) // 0.8-second delay
             }
             // --- End of History Logic ---
 

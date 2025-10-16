@@ -528,7 +528,7 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             R.id.action_reading_history -> {
-                showResetHistoryConfirmationDialog()
+                showReadingHistoryOptionsDialog()
                 true
             }
             R.id.action_theme_toggle -> {
@@ -562,6 +562,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showReadingHistoryOptionsDialog() {
+        val historyPrefs = getSharedPreferences("ReadingHistoryPrefs", Context.MODE_PRIVATE)
+        val isHistoryVisible = historyPrefs.getBoolean("is_history_visible", true)
+        val toggleOptionText = if (isHistoryVisible) "Hide History" else "Show History"
+
+        val options = arrayOf("Reset History", toggleOptionText)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Reading History Options")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showResetHistoryConfirmationDialog() // "Reset History"
+                    1 -> { // "Hide/Show History"
+                        val newVisibility = !isHistoryVisible
+                        historyPrefs.edit().putBoolean("is_history_visible", newVisibility).apply()
+                        // Refresh the list to apply the change
+                        chapterAdapter.notifyDataSetChanged()
+                        Toast.makeText(this, "History is now ${if (newVisibility) "shown" else "hidden"}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .show()
+    }
+
     private fun showResetHistoryConfirmationDialog() {
         MaterialAlertDialogBuilder(this)
             .setTitle("Reset Reading History")
@@ -581,6 +605,9 @@ class MainActivity : AppCompatActivity() {
         // Clear the last read chapter indicator
         val lastReadPrefs = getSharedPreferences("LastReadPrefs", Context.MODE_PRIVATE)
         lastReadPrefs.edit().clear().apply()
+
+        // Also reset the visibility preference to its default (visible)
+        historyPrefs.edit().putBoolean("is_history_visible", true).apply()
 
         // Show a confirmation toast
         Toast.makeText(this, "Reading history has been reset.", Toast.LENGTH_SHORT).show()

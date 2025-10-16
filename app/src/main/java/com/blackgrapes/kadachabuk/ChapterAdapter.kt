@@ -86,14 +86,21 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
                 val finalHistoryText = "$count / $formattedTime"
 
                 // Set initial text and make it visible
-                historyTextView.text = "Reading history"
+                historyTextView.alpha = 1f
+                historyTextView.translationX = 0f
+                historyTextView.text = "Reading history" // Initial text
                 historyTextView.visibility = View.VISIBLE
 
                 // Animate to the actual data after a delay
                 historyTextView.postDelayed({
-                    historyTextView.animate().alpha(0f).setDuration(300).withEndAction {
+                    val slideDistance = historyTextView.width.toFloat()
+                    // Animate the initial text out to the left
+                    historyTextView.animate().alpha(0f).translationX(-slideDistance).setDuration(300).withEndAction {
+                        // Prepare the new text off-screen to the right
+                        historyTextView.translationX = slideDistance
                         historyTextView.text = finalHistoryText
-                        historyTextView.animate().alpha(1f).setDuration(300).start()
+                        // Animate the new text in from the right
+                        historyTextView.animate().alpha(1f).translationX(0f).setDuration(300).start()
                     }.start()
                 }, 1500) // 1.5-second delay
             }

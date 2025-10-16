@@ -497,8 +497,17 @@ class DetailActivity : AppCompatActivity() {
                 MaterialAlertDialogBuilder(this)
                     .setView(customView)
                     .setPositiveButton("Yes") { dialog, _ ->
+                        // Use a ValueAnimator for a smoother, decelerating scroll.
                         scrollView.post {
-                            scrollView.smoothScrollTo(0, savedScrollY)
+                            val startScrollY = scrollView.scrollY
+                            val animator = ValueAnimator.ofInt(startScrollY, savedScrollY)
+                            animator.duration = 1200L // A longer duration for a graceful scroll
+                            animator.interpolator = DecelerateInterpolator(3.0f) // Slows down significantly at the end
+                            animator.addUpdateListener { animation ->
+                                val animatedValue = animation.animatedValue as Int
+                                scrollView.scrollTo(0, animatedValue)
+                            }
+                            animator.start()
                             highlightLineAt(savedScrollY) // Add the highlight animation
                         }
                         dialog.dismiss()

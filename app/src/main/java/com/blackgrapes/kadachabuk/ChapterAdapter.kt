@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.R as AppCompatR
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import java.util.concurrent.TimeUnit
@@ -70,6 +71,11 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
             dateTextView.text = chapter.date?.removeSurrounding("(", ")") ?: "N/A"
 
             // --- Reading History Display Logic ---
+            // Cancel any existing animations on this view before starting a new one.
+            // This is crucial for RecyclerView to prevent animations from repeating on recycled views.
+            historyTextView.animate().cancel()
+            historyTextView.visibility = View.GONE
+
             val historyPrefs = itemView.context.getSharedPreferences("ReadingHistoryPrefs", Context.MODE_PRIVATE)
             val historyKeyBase = "${chapter.languageCode}_${chapter.serial}"
             val count = historyPrefs.getInt("count_$historyKeyBase", 0)
@@ -77,11 +83,19 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
 
             if (count > 0) {
                 val formattedTime = TimeUtils.formatDuration(totalTimeMs)
-                val historyText = "$count / $formattedTime"
-                historyTextView.text = historyText
+                val finalHistoryText = "$count / $formattedTime"
+
+                // Set initial text and make it visible
+                historyTextView.text = "Reading history"
                 historyTextView.visibility = View.VISIBLE
-            } else {
-                historyTextView.visibility = View.GONE
+
+                // Animate to the actual data after a delay
+                historyTextView.postDelayed({
+                    historyTextView.animate().alpha(0f).setDuration(300).withEndAction {
+                        historyTextView.text = finalHistoryText
+                        historyTextView.animate().alpha(1f).setDuration(300).start()
+                    }.start()
+                }, 1500) // 1.5-second delay
             }
             // --- End of History Logic ---
 

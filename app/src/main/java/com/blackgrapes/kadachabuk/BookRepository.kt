@@ -25,6 +25,7 @@ private const val GOOGLE_SHEET_BASE_URL = "https://docs.google.com/spreadsheets/
 // Suffix part of the Google Sheet publish URL (after gid)
 private const val GOOGLE_SHEET_URL_SUFFIX = "&single=true&output=csv"
 private const val ABOUT_GID = "1925993700"
+private const val CONTRIBUTORS_GID = "1786621690"
 
 // --- PREFERENCES KEYS ---
 private const val ABOUT_INFO_PREFS = "AboutInfoPrefs"
@@ -86,6 +87,16 @@ class BookRepository(private val context: Context) {
             URL(urlString)
         } catch (e: Exception) {
             Log.e("BookRepository", "Malformed URL for about sheet: $urlString", e)
+            null
+        }
+    }
+
+    private fun getContributorsSheetUrl(): URL? {
+        val urlString = "$GOOGLE_SHEET_BASE_URL?gid=$CONTRIBUTORS_GID$GOOGLE_SHEET_URL_SUFFIX"
+        return try {
+            URL(urlString)
+        } catch (e: Exception) {
+            Log.e("BookRepository", "Malformed URL for contributors sheet: $urlString", e)
             null
         }
     }
@@ -430,5 +441,42 @@ class BookRepository(private val context: Context) {
     // The old getChapterCsvInputStream and downloadAndSaveCsv can now be removed
     // if getChaptersForLanguage is the sole entry point for fetching chapter data.
     // If you need to keep them for other purposes, you can, but they are not used
-    // by the getChaptersForLanguage method above.
+    // by the getChaptersForLanguage method above.    
+    suspend fun getContributors(): Result<List<Contributor>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val url = getContributorsSheetUrl() ?: return@withContext Result.failure(Exception("Could not create URL for contributors sheet"))
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connect()
+    
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val contributors = parseContributorsCsv(connection.inputStream)
+                    Result.success(contributors)
+                } else {
+                    Result.failure(Exception("Failed to download contributors sheet: ${connection.responseCode}"))
+                }
+            } catch (e: Exception) {
+                Log.e("BookRepository", "Error fetching contributors", e)
+                Result.failure(e)
+            }
+        }
+    }
+    
+    private fun parseContributorsCsv(inputStream: InputStream): List<Contributor> {
+        val contributors = mutableListOf<Contributor>()
+        csvReader { skipEmptyLine = true }.open(inputStream) {
+            readAllAsSequence().drop(1).forEach { row ->
+                if (row.size >= 2) {
+                    contributors.add(
+                        Contributor(
+                            name = row[0].trim(),
+                            address = row[1].trim()
+                        )
+                    )
+                }
+            }
+        }
+        return contributors
+    }
 }

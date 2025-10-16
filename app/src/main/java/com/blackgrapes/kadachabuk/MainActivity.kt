@@ -540,7 +540,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 AppCompatDelegate.setDefaultNightMode(newNightMode)
                 getSharedPreferences("ThemePrefs", Context.MODE_PRIVATE).edit().putInt("NightMode", newNightMode).apply()
-                true
+                return true
             }
             R.id.action_share_app -> {
                 shareApp()
@@ -556,6 +556,10 @@ class MainActivity : AppCompatActivity() {
             }
             R.id.action_about -> {
                 showAboutDialog()
+                true
+            }
+            R.id.action_credits -> {
+                bookViewModel.fetchContributors()
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -813,7 +817,20 @@ class MainActivity : AppCompatActivity() {
                 if (bookViewModel.isFetchingAboutForDialog.value == true) showAboutDialog(content = aboutText)
             }.onFailure {
                 // Optionally handle error, e.g., show a toast
+                if (bookViewModel.isFetchingAboutForDialog.value == true) {
+                    Toast.makeText(this, "Could not load 'About' info.", Toast.LENGTH_SHORT).show()
+                    bookViewModel.isFetchingAboutForDialog.value = false
+                }
                 Log.e("MainActivity", "Failed to get 'About' info", it)
+            }
+        }
+
+        bookViewModel.contributors.observe(this) { result ->
+            result.onSuccess { contributorList ->
+                showContributorsDialog(contributorList)
+            }.onFailure {
+                Toast.makeText(this, "Could not load credits.", Toast.LENGTH_SHORT).show()
+                Log.e("MainActivity", "Failed to get contributors", it)
             }
         }
     }
@@ -900,5 +917,15 @@ class MainActivity : AppCompatActivity() {
         // You could add a fade-out animation here if desired, but for now, just hide it.
         noResultsGroup.clearAnimation() // Clear any running animation
         noResultsGroup.visibility = View.GONE
+    }
+
+    private fun showContributorsDialog(contributors: List<Contributor>) {
+        val items = contributors.map { "${it.name}, ${it.address}" }.toTypedArray()
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Credits")
+            .setItems(items, null)
+            .setPositiveButton("Close", null)
+            .show()
     }
 }

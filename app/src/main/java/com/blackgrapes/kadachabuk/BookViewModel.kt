@@ -35,6 +35,9 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
     private val _aboutInfo = MutableLiveData<Result<String>>()
     val aboutInfo: LiveData<Result<String>> = _aboutInfo
 
+    private val _contributors = MutableLiveData<Result<List<Contributor>>>()
+    val contributors: LiveData<Result<List<Contributor>>> = _contributors
+
     var hasShownInitialAboutDialog = false
     val isFetchingAboutForDialog = MutableLiveData<Boolean>(false)
 
@@ -112,6 +115,12 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
     fun fetchAboutInfo(languageCode: String, forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _aboutInfo.postValue(repository.getAboutInfo(languageCode, forceRefresh))
+        }
+    }
+
+    fun fetchContributors() {
+        viewModelScope.launch {
+            _contributors.postValue(repository.getContributors())
         }
     }
 

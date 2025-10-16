@@ -84,6 +84,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var errorMessageTextView: TextView
     private lateinit var noResultsGroup: ViewGroup // Changed from TextView
     private var originalChapters: List<Chapter> = emptyList()
+    private var pristineOriginalChapters: List<Chapter> = emptyList() // Holds the clean, sorted list
     private lateinit var retryButton: Button
     private lateinit var downloadedHeadingsAdapter: DownloadedChaptersAdapter
 
@@ -130,6 +131,35 @@ class MainActivity : AppCompatActivity() {
         checkIfLanguageNotSet()
         setupFab()
         observeViewModel()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // This block ensures that when the user returns from reading a chapter,
+        // the list is immediately updated to pin the last-read chapter at the top.
+        // We only perform this logic if the original list of chapters has been loaded.
+        if (originalChapters.isNotEmpty()) {
+            // Always reorder from the pristine, serially-sorted list.
+            // This ensures previously pinned items go back to their correct place.
+            val reorderedChapters = reorderChaptersWithLastRead(pristineOriginalChapters)
+            // Update the currently displayed list.
+            originalChapters = reorderedChapters
+
+            val searchItem = optionsMenu?.findItem(R.id.action_search)
+            val searchView = searchItem?.actionView as? SearchView
+            val isSearching = searchView != null && !searchView.isIconified && !searchView.query.isNullOrEmpty()
+
+            // Only update the visible list if the user is not in the middle of a search.
+            if (!isSearching) {
+                if (isShowingBookmarks) {
+                    // If the user was viewing bookmarks, re-apply the filter.
+                    filterBookmarkedChapters()
+                } else {
+                    // Otherwise, just update the main list.
+                    chapterAdapter.updateChapters(originalChapters)
+                }
+            }
+        }
     }
 
     /**
@@ -597,7 +627,9 @@ class MainActivity : AppCompatActivity() {
 
                     chapterAdapter.updateChapters(reorderedChapters, lastReadSerial)
                     hideNoResultsView()
-                    originalChapters = reorderedChapters // Store the reordered full list
+                    // Store both the pristine and the reordered list
+                    pristineOriginalChapters = it // This is the clean, serially sorted list.
+                    originalChapters = reorderedChapters // This is the list for display.
                     recyclerViewChapters.visibility = View.VISIBLE
                 } else { // This block runs when the observed chapter list is empty.
                     // Don't hide the RecyclerView if there are no chapters, just show an empty state.
@@ -605,6 +637,7 @@ class MainActivity : AppCompatActivity() {
                     chapterAdapter.updateChapters(emptyList())
                     originalChapters = emptyList()
                     // Only show the "no results" message if we are certain loading is finished and there's no error.
+                    pristineOriginalChapters = emptyList()
                     if (bookViewModel.isLoading.value == false && errorGroup.visibility == View.GONE) {
                         // Also check that we are not in the middle of a search that has no results
                         val searchItem = optionsMenu?.findItem(R.id.action_search)

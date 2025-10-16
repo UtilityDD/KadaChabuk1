@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.appcompat.R as AppCompatR
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import java.util.concurrent.TimeUnit
 import com.google.android.material.card.MaterialCardView
 
 class ChapterAdapter(private var chapters: List<Chapter>) :
@@ -59,12 +60,37 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
         private val cardView: MaterialCardView = itemView as MaterialCardView
         private val headingTextView: TextView = itemView.findViewById(R.id.textViewHeading)
         private val dateTextView: TextView = itemView.findViewById(R.id.textViewDate)
+        private val historyTextView: TextView = itemView.findViewById(R.id.textViewHistory)
         val serialTextView: TextView = itemView.findViewById(R.id.textViewSerial)
 
         fun bind(chapter: Chapter, isLastRead: Boolean) {
             headingTextView.text = chapter.heading
             // Remove parentheses from the date string, e.g., (dd/mm/yyyy) -> dd/mm/yyyy
             dateTextView.text = chapter.date?.removeSurrounding("(", ")") ?: "N/A"
+
+            // --- Reading History Display Logic ---
+            val historyPrefs = itemView.context.getSharedPreferences("ReadingHistoryPrefs", Context.MODE_PRIVATE)
+            val historyKeyBase = "${chapter.languageCode}_${chapter.serial}"
+            val count = historyPrefs.getInt("count_$historyKeyBase", 0)
+            val totalTimeMs = historyPrefs.getLong("time_$historyKeyBase", 0)
+
+            if (count > 0) {
+                val hours = TimeUnit.MILLISECONDS.toHours(totalTimeMs)
+                val minutes = TimeUnit.MILLISECONDS.toMinutes(totalTimeMs) % 60
+
+                val timeString = when {
+                    hours > 0 -> "${hours}h ${minutes}m"
+                    minutes > 0 -> "${minutes}m"
+                    else -> "" // Don't show time if less than a minute
+                }
+
+                val historyText = if (timeString.isNotEmpty()) "$count / $timeString" else "$count"
+                historyTextView.text = historyText
+                historyTextView.visibility = View.VISIBLE
+            } else {
+                historyTextView.visibility = View.GONE
+            }
+            // --- End of History Logic ---
 
             // Visually distinguish the last read chapter
             if (isLastRead) {

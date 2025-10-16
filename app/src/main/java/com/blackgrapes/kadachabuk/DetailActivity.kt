@@ -84,8 +84,6 @@ class DetailActivity : AppCompatActivity() {
     private lateinit var previousMatchButton: ImageButton
     private lateinit var nextMatchButton: ImageButton
     private lateinit var matchCountTextView: TextView
-    private lateinit var readingHistoryLayout: LinearLayout
-    private lateinit var readingHistoryTextView: TextView
 
     private var chapterHeading: String? = null
     private var chapterDate: String? = null
@@ -141,8 +139,6 @@ class DetailActivity : AppCompatActivity() {
         scrollToTopButton = findViewById(R.id.button_scroll_to_top)
         nextMatchButton = findViewById(R.id.button_next_match)
         matchCountTextView = findViewById(R.id.text_view_match_count)
-        readingHistoryLayout = findViewById(R.id.reading_history_layout)
-        readingHistoryTextView = findViewById(R.id.text_view_reading_history)
         customActionMenu = findViewById(R.id.custom_action_menu)
 
 
@@ -226,7 +222,7 @@ class DetailActivity : AppCompatActivity() {
         setRandomHeaderImage()
 
         // Handle reading history tracking and display
-        setupReadingHistory()
+        incrementReadCount()
 
         // Add a scroll listener to fade out the header image on scroll.
         scrollView.viewTreeObserver.addOnScrollChangedListener {
@@ -540,41 +536,15 @@ class DetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupReadingHistory() {
+    private fun incrementReadCount() {
         val historyKeyBase = getHistoryKeyBase() ?: return
         val prefs = getSharedPreferences(HISTORY_PREFS, Context.MODE_PRIVATE)
 
-        // 1. Increment read count for this session
+        // Increment read count for this session
         val countKey = "count_$historyKeyBase"
         val currentCount = prefs.getInt(countKey, 0)
         val newCount = currentCount + 1
         prefs.edit().putInt(countKey, newCount).apply()
-
-        // 2. Load total time and format the message
-        val timeKey = "time_$historyKeyBase"
-        val totalTimeMs = prefs.getLong(timeKey, 0)
-        updateHistoryTextView(newCount, totalTimeMs)
-
-        // 3. Schedule the fade-in animation
-        CoroutineScope(Dispatchers.Main).launch {
-            delay(300000) // Wait for 5 minutes before showing
-
-            // Fade in
-            readingHistoryLayout.visibility = View.VISIBLE
-            readingHistoryLayout.animate()
-                .alpha(1f)
-                .setDuration(1000) // 1-second fade-in
-                .start()
-
-            delay(30000) // Keep it on screen for 30 seconds
-
-            // Fade out
-            readingHistoryLayout.animate()
-                .alpha(0f)
-                .setDuration(1000) // 1-second fade-out
-                .withEndAction { readingHistoryLayout.visibility = View.GONE }
-                .start()
-        }
     }
 
     private fun saveReadingTime() {
@@ -592,17 +562,6 @@ class DetailActivity : AppCompatActivity() {
         val newTotalTime = existingTime + sessionDuration
 
         prefs.edit().putLong(timeKey, newTotalTime).apply()
-    }
-
-    private fun updateHistoryTextView(count: Int, totalTimeMs: Long) {
-        val hours = TimeUnit.MILLISECONDS.toHours(totalTimeMs)
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(totalTimeMs) % 60
-
-        val countText = if (count == 1) "1st time" else "$count times"
-        val timeText = if (hours > 0) "$hours H, $minutes m" else "$minutes m"
-
-        readingHistoryTextView.text =
-            "You are reading this chapter for the $countText, total reading time $timeText"
     }
 
     private fun getHistoryKeyBase(): String? {

@@ -25,6 +25,9 @@
                 android:id="@+id/action_language_change"
                 android:title="Change Language" />
             <item
+                android:id="@+id/action_reading_history"
+                android:title="Reading History" />
+            <item
                 android:id="@+id/action_my_notes"
                 android:title="My Notes" />
             <item

@@ -527,6 +527,10 @@ class MainActivity : AppCompatActivity() {
                 showLanguageSelectionDialog(isCancelable = true)
                 true
             }
+            R.id.action_reading_history -> {
+                showResetHistoryConfirmationDialog()
+                true
+            }
             R.id.action_theme_toggle -> {
                 val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
                 val newNightMode = if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
@@ -556,6 +560,34 @@ class MainActivity : AppCompatActivity() {
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun showResetHistoryConfirmationDialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Reset Reading History")
+            .setMessage("Are you sure you want to reset all reading history? This action cannot be undone.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Reset") { _, _ ->
+                resetReadingHistory()
+            }
+            .show()
+    }
+
+    private fun resetReadingHistory() {
+        // Clear reading history (counts and times)
+        val historyPrefs = getSharedPreferences("ReadingHistoryPrefs", Context.MODE_PRIVATE)
+        historyPrefs.edit().clear().apply()
+
+        // Clear the last read chapter indicator
+        val lastReadPrefs = getSharedPreferences("LastReadPrefs", Context.MODE_PRIVATE)
+        lastReadPrefs.edit().clear().apply()
+
+        // Show a confirmation toast
+        Toast.makeText(this, "Reading history has been reset.", Toast.LENGTH_SHORT).show()
+
+        // Refresh the UI by re-binding the adapter with the original, pristine chapter list
+        // and no last-read chapter.
+        chapterAdapter.updateChapters(pristineOriginalChapters, null)
     }
 
     private fun updateThemeIcon(themeMenuItem: MenuItem) {

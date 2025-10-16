@@ -565,7 +565,6 @@ class MainActivity : AppCompatActivity() {
     private fun showReadingHistoryOptionsDialog() {
         val historyPrefs = getSharedPreferences("ReadingHistoryPrefs", Context.MODE_PRIVATE)
         val isHistoryVisible = historyPrefs.getBoolean("is_history_visible", true)
-        val toggleOptionText = if (isHistoryVisible) "Hide History" else "Show History"
 
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -589,6 +588,7 @@ class MainActivity : AppCompatActivity() {
 
         toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
             historyPrefs.edit().putBoolean("is_history_visible", isChecked).apply()
+            filterCheckbox.isEnabled = isChecked // Enable/disable checkbox based on switch
             // Refresh the list to apply the change
             chapterAdapter.notifyDataSetChanged()
             // The toast is a bit redundant since the switch state is clear.
@@ -598,6 +598,7 @@ class MainActivity : AppCompatActivity() {
         // Handle the new filter checkbox
         val isFilterEnabled = historyPrefs.getBoolean("history_filter_5_min", false)
         filterCheckbox.isChecked = isFilterEnabled
+        filterCheckbox.isEnabled = isHistoryVisible // Set initial enabled state
         filterCheckbox.setOnCheckedChangeListener { _, isChecked ->
             historyPrefs.edit().putBoolean("history_filter_5_min", isChecked).apply()
             chapterAdapter.notifyDataSetChanged() // Refresh list to apply filter

@@ -576,23 +576,23 @@ class MainActivity : AppCompatActivity() {
         dialog.window?.attributes?.windowAnimations = R.style.DialogAnimation
 
         val resetOption = dialogView.findViewById<TextView>(R.id.option_reset_history)
-        val toggleOption = dialogView.findViewById<TextView>(R.id.option_toggle_history)
+        val toggleSwitch = dialogView.findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.option_toggle_history)
         val filterCheckbox = dialogView.findViewById<CheckBox>(R.id.checkbox_filter_by_time)
 
-        toggleOption.text = toggleOptionText
+        toggleSwitch.text = "Show Reading History"
+        toggleSwitch.isChecked = isHistoryVisible
 
         resetOption.setOnClickListener {
             showResetHistoryConfirmationDialog()
             dialog.dismiss()
         }
 
-        toggleOption.setOnClickListener {
-            val newVisibility = !isHistoryVisible
-            historyPrefs.edit().putBoolean("is_history_visible", newVisibility).apply()
+        toggleSwitch.setOnCheckedChangeListener { _, isChecked ->
+            historyPrefs.edit().putBoolean("is_history_visible", isChecked).apply()
             // Refresh the list to apply the change
             chapterAdapter.notifyDataSetChanged()
-            Toast.makeText(this, "History is now ${if (newVisibility) "shown" else "hidden"}", Toast.LENGTH_SHORT).show()
-            dialog.dismiss()
+            // The toast is a bit redundant since the switch state is clear.
+            // dialog.dismiss() // Keep dialog open to change other settings
         }
 
         // Handle the new filter checkbox

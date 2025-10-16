@@ -29,6 +29,9 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
     private val _downloadingChaptersList = MutableLiveData<List<ChapterDownloadStatus>>()
     val downloadingChaptersList: LiveData<List<ChapterDownloadStatus>> = _downloadingChaptersList
 
+    private val _showInitialLoadMessage = MutableLiveData<Boolean>()
+    val showInitialLoadMessage: LiveData<Boolean> = _showInitialLoadMessage
+
     private val _aboutInfo = MutableLiveData<Result<String>>()
     val aboutInfo: LiveData<Result<String>> = _aboutInfo
 
@@ -53,6 +56,7 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
 
             if (needsInitialLoadingScreen) {
                 _isLoading.postValue(true)
+                _showInitialLoadMessage.postValue(true) // Signal to show the message
                 _downloadingChaptersList.postValue(emptyList()) // Clear previous list
                 _loadingStatusMessage.postValue("Preparing download...")
                 _error.postValue(null)
@@ -98,6 +102,7 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
                 // Only hide the loading screen if it was shown in the first place.
                 if (needsInitialLoadingScreen) {
                     _isLoading.postValue(false)
+                    _showInitialLoadMessage.postValue(false) // Signal to hide the message
                 }
             }
         }

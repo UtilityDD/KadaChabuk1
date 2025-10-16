@@ -74,7 +74,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var loadingGroup: Group
     private lateinit var tvLoadingStatus: TextView
     private lateinit var lottieAnimationView: LottieAnimationView
-    private lateinit var tvProgressPercentage: TextView
+    private lateinit var tvLoadingTimeNotice: TextView
     private lateinit var rvDownloadedChapterHeadings: RecyclerView
     private lateinit var searchSummaryTextView: TextView
     private lateinit var errorGroup: Group
@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity() {
         loadingGroup = findViewById(R.id.loading_group)
         tvLoadingStatus = findViewById(R.id.tv_loading_status)
         lottieAnimationView = findViewById(R.id.lottie_animation_view)
-        tvProgressPercentage = findViewById(R.id.tv_progress_percentage)
+        tvLoadingTimeNotice = findViewById(R.id.tv_loading_time_notice)
         rvDownloadedChapterHeadings = findViewById(R.id.rv_downloaded_chapter_headings)
         errorGroup = findViewById(R.id.error_group)
         errorMessageTextView = findViewById(R.id.error_message)
@@ -606,7 +606,6 @@ class MainActivity : AppCompatActivity() {
                 // and the percentage text is hidden.
                 lottieAnimationView.playAnimation()
                 loadingGroup.visibility = View.VISIBLE
-                tvProgressPercentage.visibility = View.GONE
                 rvDownloadedChapterHeadings.visibility = View.VISIBLE // Show progress list
                 recyclerViewChapters.visibility = View.GONE 
                 hideNoResultsView()
@@ -648,6 +647,10 @@ class MainActivity : AppCompatActivity() {
                 errorGroup.visibility = View.GONE
                 Log.d("MainActivity", "Error cleared. Hiding error screen.")
             }
+        }
+
+        bookViewModel.showInitialLoadMessage.observe(this) { showMessage ->
+            tvLoadingTimeNotice.visibility = if (showMessage) View.VISIBLE else View.GONE
         }
 
         bookViewModel.downloadingChaptersList.observe(this) { downloadingList ->

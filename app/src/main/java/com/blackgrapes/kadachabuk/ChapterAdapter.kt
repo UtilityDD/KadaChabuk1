@@ -78,13 +78,18 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
 
             val historyPrefs = itemView.context.getSharedPreferences("ReadingHistoryPrefs", Context.MODE_PRIVATE)
             val isHistoryVisible = historyPrefs.getBoolean("is_history_visible", true)
+            val isTimeFilterEnabled = historyPrefs.getBoolean("history_filter_5_min", false)
+            val fiveMinutesInMillis = 5 * 60 * 1000
 
             if (isHistoryVisible) {
                 val historyKeyBase = "${chapter.languageCode}_${chapter.serial}"
                 val count = historyPrefs.getInt("count_$historyKeyBase", 0)
                 val totalTimeMs = historyPrefs.getLong("time_$historyKeyBase", 0)
 
-                if (count > 0) {
+                // Check if the history should be shown based on the time filter
+                val shouldShowBasedOnTime = !isTimeFilterEnabled || totalTimeMs >= fiveMinutesInMillis
+
+                if (count > 0 && shouldShowBasedOnTime) {
                     val formattedTime = TimeUtils.formatDuration(totalTimeMs)
                     val finalHistoryText = "$count / $formattedTime"
 
@@ -108,8 +113,7 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
                         }.start()
                     }, 800) // 0.8-second delay
                 }
-            }
-            // --- End of History Logic ---
+            } // --- End of History Logic ---
 
             // Visually distinguish the last read chapter
             lastReadTextView.visibility = if (isLastRead) View.VISIBLE else View.GONE

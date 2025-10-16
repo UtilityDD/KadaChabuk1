@@ -577,6 +577,7 @@ class MainActivity : AppCompatActivity() {
 
         val resetOption = dialogView.findViewById<TextView>(R.id.option_reset_history)
         val toggleOption = dialogView.findViewById<TextView>(R.id.option_toggle_history)
+        val filterCheckbox = dialogView.findViewById<CheckBox>(R.id.checkbox_filter_by_time)
 
         toggleOption.text = toggleOptionText
 
@@ -592,6 +593,14 @@ class MainActivity : AppCompatActivity() {
             chapterAdapter.notifyDataSetChanged()
             Toast.makeText(this, "History is now ${if (newVisibility) "shown" else "hidden"}", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
+        }
+
+        // Handle the new filter checkbox
+        val isFilterEnabled = historyPrefs.getBoolean("history_filter_5_min", false)
+        filterCheckbox.isChecked = isFilterEnabled
+        filterCheckbox.setOnCheckedChangeListener { _, isChecked ->
+            historyPrefs.edit().putBoolean("history_filter_5_min", isChecked).apply()
+            chapterAdapter.notifyDataSetChanged() // Refresh list to apply filter
         }
 
         dialog.show()

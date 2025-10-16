@@ -62,6 +62,9 @@ private const val KEY_SEARCH_HISTORY = "search_history"
 private const val MAX_SEARCH_HISTORY = 10
 private const val ABOUT_PREFS = "AboutPrefs"
 
+private const val LAST_READ_PREFS = "LastReadPrefs"
+private const val KEY_LAST_READ_SERIAL = "lastReadSerial"
+private const val KEY_LAST_READ_LANG = "lastReadLang"
 
 class MainActivity : AppCompatActivity() {
 
@@ -548,6 +551,28 @@ class MainActivity : AppCompatActivity() {
         startActivity(shareIntent)
     }
 
+    private fun reorderChaptersWithLastRead(chapters: List<Chapter>): List<Chapter> {
+        val prefs = getSharedPreferences(LAST_READ_PREFS, Context.MODE_PRIVATE)
+        val lastReadSerial = prefs.getString(KEY_LAST_READ_SERIAL, null)
+        val lastReadLang = prefs.getString(KEY_LAST_READ_LANG, null)
+
+        if (lastReadSerial == null || lastReadLang == null) {
+            return chapters // No last read chapter, return original order
+        }
+
+        val lastReadChapter = chapters.find { it.serial == lastReadSerial && it.languageCode == lastReadLang }
+
+        return if (lastReadChapter != null) {
+            // Create a new list with the last read chapter at the top
+            val mutableChapters = chapters.toMutableList()
+            mutableChapters.remove(lastReadChapter)
+            mutableChapters.add(0, lastReadChapter)
+            mutableChapters.toList()
+        } else {
+            chapters // Last read chapter not in the current list, return original order
+        }
+    }
+
     private fun observeViewModel() {
         bookViewModel.chapters.observe(this) { chapters ->
             Log.d("MainActivity", "Chapters LiveData updated. Count: ${chapters?.size ?: 0}")
@@ -565,9 +590,14 @@ class MainActivity : AppCompatActivity() {
                         }
                         bookViewModel.hasShownInitialAboutDialog = true
                     }
-                    chapterAdapter.updateChapters(it)
+
+                    val reorderedChapters = reorderChaptersWithLastRead(it)
+                    val prefs = getSharedPreferences(LAST_READ_PREFS, Context.MODE_PRIVATE)
+                    val lastReadSerial = prefs.getString(KEY_LAST_READ_SERIAL, null)
+
+                    chapterAdapter.updateChapters(reorderedChapters, lastReadSerial)
                     hideNoResultsView()
-                    originalChapters = it // Store the full list
+                    originalChapters = reorderedChapters // Store the reordered full list
                     recyclerViewChapters.visibility = View.VISIBLE
                 } else { // This block runs when the observed chapter list is empty.
                     // Don't hide the RecyclerView if there are no chapters, just show an empty state.

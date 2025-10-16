@@ -62,6 +62,9 @@ private const val SCROLL_PREFS = "ScrollPositions"
 private const val NOTES_PREFS = "MyNotesPrefs"
 private const val HISTORY_PREFS = "ReadingHistoryPrefs"
 private const val KEY_NOTES = "notes"
+private const val LAST_READ_PREFS = "LastReadPrefs"
+private const val KEY_LAST_READ_SERIAL = "lastReadSerial"
+private const val KEY_LAST_READ_LANG = "lastReadLang"
 
 class DetailActivity : AppCompatActivity() {
 
@@ -603,6 +606,18 @@ class DetailActivity : AppCompatActivity() {
         super.onPause()
         saveReadingTime()
         saveScrollPosition()
+        saveLastReadChapter()
+    }
+
+    private fun saveLastReadChapter() {
+        if (::chapterSerial.isInitialized && ::languageCode.isInitialized && chapterSerial.isNotEmpty() && languageCode.isNotEmpty()) {
+            val prefs = getSharedPreferences(LAST_READ_PREFS, Context.MODE_PRIVATE)
+            with(prefs.edit()) {
+                putString(KEY_LAST_READ_SERIAL, chapterSerial)
+                putString(KEY_LAST_READ_LANG, languageCode)
+                apply()
+            }
+        }
     }
 
     private fun setRandomHeaderImage() {

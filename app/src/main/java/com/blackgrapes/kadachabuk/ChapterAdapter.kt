@@ -1,11 +1,15 @@
 package com.blackgrapes.kadachabuk
 
+import android.content.Context
 import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.appcompat.R as AppCompatR
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.card.MaterialCardView
 
 class ChapterAdapter(private var chapters: List<Chapter>) :
     RecyclerView.Adapter<ChapterAdapter.ChapterViewHolder>() {
@@ -18,8 +22,15 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
 
     override fun onBindViewHolder(holder: ChapterViewHolder, position: Int) {
         val chapter = chapters[position]
+        val context = holder.itemView.context
+
+        // Retrieve the last read serial from SharedPreferences
+        val prefs = context.getSharedPreferences("LastReadPrefs", Context.MODE_PRIVATE)
+        val lastReadSerial = prefs.getString("lastReadSerial", null)
+
         holder.serialTextView.text = chapter.serial
-        holder.bind(chapter)
+        // Pass whether this is the last read chapter to the bind method
+        holder.bind(chapter, chapter.serial == lastReadSerial)
 
         // Handle click → open DetailActivity
         holder.itemView.setOnClickListener {
@@ -39,20 +50,36 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
 
     override fun getItemCount(): Int = chapters.size
 
-    fun updateChapters(newChapters: List<Chapter>) {
+    fun updateChapters(newChapters: List<Chapter>, lastReadSerial: String? = null) {
         chapters = newChapters
         notifyDataSetChanged()
     }
 
     class ChapterViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val cardView: MaterialCardView = itemView as MaterialCardView
         private val headingTextView: TextView = itemView.findViewById(R.id.textViewHeading)
         private val dateTextView: TextView = itemView.findViewById(R.id.textViewDate)
         val serialTextView: TextView = itemView.findViewById(R.id.textViewSerial)
 
-        fun bind(chapter: Chapter) {
+        fun bind(chapter: Chapter, isLastRead: Boolean) {
             headingTextView.text = chapter.heading
             // Remove parentheses from the date string, e.g., (dd/mm/yyyy) -> dd/mm/yyyy
             dateTextView.text = chapter.date?.removeSurrounding("(", ")") ?: "N/A"
+
+            // Visually distinguish the last read chapter
+            if (isLastRead) {
+                // Example: Change stroke color and width
+                cardView.strokeWidth = 4 // Set a noticeable stroke width
+                // Use the theme's primary color for the stroke.
+                // R.color.design_default_color_primary is a private resource.
+                val typedValue = android.util.TypedValue()
+                itemView.context.theme.resolveAttribute(AppCompatR.attr.colorPrimary, typedValue, true)
+                cardView.strokeColor = typedValue.data
+
+            } else {
+                // Reset to default for other items
+                cardView.strokeWidth = 0
+            }
         }
     }
 }

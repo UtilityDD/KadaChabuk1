@@ -53,6 +53,7 @@ import androidx.core.app.ShareCompat
 import com.airbnb.lottie.LottieAnimationView
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.CoroutineScope
+import com.google.android.material.badge.BadgeDrawable
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -379,6 +380,9 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        // Add a badge to the "Credits" menu item to draw attention
+        addBadgeToCreditsMenuItem()
+
         updateThemeIcon(menu.findItem(R.id.action_theme_toggle))
         return true
     }
@@ -450,6 +454,20 @@ class MainActivity : AppCompatActivity() {
         underline.setBackgroundColor(Color.TRANSPARENT)
     }
 
+    /**
+     * Creates and attaches a BadgeDrawable to the "Credits" menu item.
+     * This is used to highlight the item in the overflow menu.
+     */
+    private fun addBadgeToCreditsMenuItem() {
+        // The badge needs to be attached to the Toolbar, not the menu item directly.
+        val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
+        val creditsBadge = BadgeDrawable.create(this).apply {
+            // Using a dot without a number.
+            backgroundColor = ContextCompat.getColor(this@MainActivity, android.R.color.holo_green_light)
+            isVisible = true
+        }
+        com.google.android.material.badge.BadgeUtils.attachBadgeDrawable(creditsBadge, toolbar, R.id.action_credits)
+    }
 
     override fun onDestroy() {
         super.onDestroy()

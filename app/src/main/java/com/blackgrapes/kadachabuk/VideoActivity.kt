@@ -59,8 +59,11 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener, OnFavoriteChan
         val controller = ViewCompat.getWindowInsetsController(window.decorView)
         val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         // isAppearanceLightStatusBars = true means DARK icons, for light backgrounds.
-        controller?.isAppearanceLightStatusBars = isNightMode
-
+        // We want the opposite of the default:
+        // - Light theme (isNightMode=false) -> white icons (isAppearanceLightStatusBars=false)
+        // - Dark theme (isNightMode=true) -> black icons (isAppearanceLightStatusBars=true)
+        controller?.isAppearanceLightStatusBars = !isNightMode
+        
         toolbar = findViewById(R.id.toolbar) // Initialize once
         ViewCompat.setOnApplyWindowInsetsListener(toolbar) { view, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())

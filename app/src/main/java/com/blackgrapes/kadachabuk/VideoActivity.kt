@@ -1,5 +1,6 @@
 package com.blackgrapes.kadachabuk
 
+import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.Menu
@@ -30,8 +31,10 @@ import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
 interface VideoPlaybackListener {
     fun onVideoPlaybackChanged(videoTitle: String?)
 }
-
-class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
+interface OnFavoriteChangedListener {
+    fun onFavoriteChanged()
+}
+class VideoActivity : AppCompatActivity(), VideoPlaybackListener, OnFavoriteChangedListener {
 
     private lateinit var progressBar: ProgressBar
     private lateinit var toolbar: MaterialToolbar
@@ -42,6 +45,7 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
     private lateinit var viewPager: ViewPager2
 
     private var originalTitle: String = "Video Links"
+    private var currentViewPagerPosition = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -135,8 +139,13 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
                     tabLayout.visibility = View.VISIBLE
                     viewPager.visibility = View.VISIBLE
 
-                    val videoMap = videoList.groupBy { it.category }
-                    val categories = listOf("Speech", "Mahanam", "Vedic Song")
+                    val favoritePrefs = getSharedPreferences("VideoFavorites", Context.MODE_PRIVATE)
+                    val favoriteVideos = videoList.filter { favoritePrefs.getBoolean(it.getUniqueId(), false) }
+
+                    val videoMap = videoList.groupBy { it.category }.toMutableMap()
+                    videoMap["Favorites"] = favoriteVideos
+
+                    val categories = listOf("Favorites", "Speech", "Mahanam", "Vedic Song")
                     val fragments = categories.map { category ->
                         VideoListFragment.newInstance(videoMap[category] ?: emptyList())
                     }
@@ -144,11 +153,34 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
                     val adapter = VideoPagerAdapter(this@VideoActivity, fragments)
                     viewPager.adapter = adapter
 
+                    // Set custom icons for tabs
+                    val tabIcons = listOf(
+                        R.drawable.ic_favorite_filled,
+                        0, // No icon for Speech
+                        0, // No icon for Mahanam
+                        0  // No icon for Vedic Song
+                    )
+
                     TabLayoutMediator(tabLayout, viewPager) { tab, position ->
                         val category = categories[position]
                         val count = videoMap[category]?.size ?: 0
-                        tab.text = "$category ($count)"
+
+                        if (position == 0) { // This is the "Favorites" tab
+                            tab.setIcon(R.drawable.ic_favorite_filled)
+                            tab.contentDescription = "Favorites ($count)"
+
+                            // Create and configure the badge
+                            val badge = tab.orCreateBadge
+                            badge.number = count
+                            badge.isVisible = count > 0
+                        } else {
+                            // For other tabs, just set the text with the count
+                            tab.text = "$category ($count)"
+                        }
                     }.attach()
+
+                    // Restore the previously selected tab
+                    viewPager.setCurrentItem(currentViewPagerPosition, false)
 
                     originalTitle = "Video Links (${videoList.size})"
                     toolbar.title = originalTitle
@@ -193,5 +225,11 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
         } else {
             toolbar.title = originalTitle
         }
+    }
+
+    override fun onFavoriteChanged() {
+        // Save the current tab position before refreshing
+        currentViewPagerPosition = viewPager.currentItem
+        fetchVideoData()
     }
 }

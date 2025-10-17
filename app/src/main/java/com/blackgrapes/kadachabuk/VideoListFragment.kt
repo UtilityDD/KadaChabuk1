@@ -16,11 +16,15 @@ class VideoListFragment : Fragment() {
     private lateinit var scrollToTopButton: FloatingActionButton
     private var videos: List<Video> = emptyList()
     private var playbackListener: VideoPlaybackListener? = null
+    private var favoriteChangedListener: (() -> Unit)? = null
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
         if (context is VideoPlaybackListener) {
             playbackListener = context
+        }
+        if (context is OnFavoriteChangedListener) {
+            favoriteChangedListener = { context.onFavoriteChanged() }
         }
     }
 
@@ -37,8 +41,8 @@ class VideoListFragment : Fragment() {
         scrollToTopButton = view.findViewById(R.id.fab_scroll_to_top)
 
         recyclerView.layoutManager = LinearLayoutManager(context)
-        playbackListener?.let {
-            recyclerView.adapter = VideoAdapter(videos, it)
+        playbackListener?.let { pbListener ->
+            recyclerView.adapter = VideoAdapter(videos, pbListener, favoriteChangedListener ?: {})
         }
 
         scrollToTopButton.setOnClickListener {

@@ -42,12 +42,26 @@
             android:id="@+id/videoRemark"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
             android:layout_marginTop="8dp"
             android:textAppearance="?attr/textAppearanceBody1"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/favoriteButton"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/video_container"
             tools:text="Video Remark or Title" />
+
+        <ImageButton
+            android:id="@+id/favoriteButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Mark as favorite"
+            android:src="@drawable/ic_favorite_border"
+            app:layout_constraintBottom_toBottomOf="@+id/videoRemark"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/videoRemark"
+            app:tint="?attr/colorError" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

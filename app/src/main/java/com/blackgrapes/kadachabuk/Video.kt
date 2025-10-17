@@ -40,4 +40,11 @@ data class Video(
         val matcher = compiledPattern.matcher(link)
         return if (matcher.find()) matcher.group() else null
     }
+
+    /**
+     * Provides a unique identifier for the video, suitable for use as a key in SharedPreferences.
+     * It defaults to the YouTube video ID, falling back to the original link if the ID can't be extracted.
+     */
+    fun getUniqueId(): String = getYouTubeVideoId() ?: originalLink
+
 }

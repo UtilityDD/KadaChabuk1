@@ -1,11 +1,14 @@
 package com.blackgrapes.kadachabuk
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.view.LayoutInflater
+import android.content.SharedPreferences
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -13,15 +16,18 @@ import com.squareup.picasso.Picasso
 
 class VideoAdapter(
     private val videos: List<Video>,
-    private val playbackListener: VideoPlaybackListener
+    private val playbackListener: VideoPlaybackListener,
+    private val onFavoriteChanged: () -> Unit
 ) : RecyclerView.Adapter<VideoAdapter.VideoViewHolder>() {
 
     private var currentlyPlayingPosition: Int = -1
+    private lateinit var favoritePrefs: SharedPreferences
 
     class VideoViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val thumbnail: ImageView = view.findViewById(R.id.videoThumbnail)
         val remark: TextView = view.findViewById(R.id.videoRemark)
         val webView: WebView = view.findViewById(R.id.video_webview)
+        val favoriteButton: ImageButton = view.findViewById(R.id.favoriteButton)
 
         fun releasePlayer() {
             webView.stopLoading()
@@ -30,6 +36,9 @@ class VideoAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VideoViewHolder {
+        if (!::favoritePrefs.isInitialized) {
+            favoritePrefs = parent.context.getSharedPreferences("VideoFavorites", Context.MODE_PRIVATE)
+        }
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_video, parent, false)
         return VideoViewHolder(view)
@@ -44,6 +53,24 @@ class VideoAdapter(
         if (videoId != null) {
             val thumbnailUrl = "https://img.youtube.com/vi/$videoId/0.jpg"
             Picasso.get().load(thumbnailUrl).into(holder.thumbnail)
+        }
+
+        // Set favorite button state
+        val isFavorite = favoritePrefs.getBoolean(video.getUniqueId(), false)
+        holder.favoriteButton.setImageResource(if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border)
+
+        holder.favoriteButton.setOnClickListener {
+            val currentIsFavorite = favoritePrefs.getBoolean(video.getUniqueId(), false)
+            val newIsFavorite = !currentIsFavorite
+            with(favoritePrefs.edit()) {
+                putBoolean(video.getUniqueId(), newIsFavorite)
+                apply()
+            }
+            holder.favoriteButton.setImageResource(if (newIsFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border)
+            // If this is in a favorites list, we might want to remove it
+            onFavoriteChanged()
+            // This can be handled by notifying the fragment/activity to refresh the list.
+            // For now, just updating the icon is fine.
         }
 
         if (position == currentlyPlayingPosition) {

@@ -17,4 +17,19 @@
         <item name="windowActionModeOverlay">true</item>
         <item name="actionModeStyle">@style/CustomActionModeStyle</item>
     </style>
+
+    <!-- Define the Chapter Heading style for Light Theme -->
+    <style name="ChapterHeading.TextView" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textStyle">bold</item> <!-- Use bold font weight in light mode -->
+    </style>
+
+    <!-- Define the Chapter Detail Heading style for Light Theme -->
+    <style name="ChapterDetailHeading.TextView" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Define the Chapter Body style for Light Theme -->
+    <style name="ChapterBody.TextView" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textStyle">normal</item>
+    </style>
 </resources>

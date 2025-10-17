@@ -227,6 +227,11 @@ class DetailActivity : AppCompatActivity() {
         // Add a scroll listener to fade out the header image on scroll.
         scrollView.viewTreeObserver.addOnScrollChangedListener {
             val scrollY = scrollView.scrollY
+
+            // Re-apply the status bar icon color on scroll. This is a robust way to prevent
+            // the system from reverting it, especially with complex layouts.
+            WindowUtils.setStatusBarIconColor(window)
+
             val imageHeight = imageViewHeader.height.toFloat()
 
             // Calculate alpha: 1.0 (fully visible) at scrollY 0, to 0.0 (fully transparent)
@@ -246,6 +251,14 @@ class DetailActivity : AppCompatActivity() {
             // Apply the fade effect to the scroll-to-top button.
             scrollToTopButton.visibility = if (scrollToTopAlpha > 0) View.VISIBLE else View.GONE
             scrollToTopButton.alpha = scrollToTopAlpha
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            // When the window gains focus (e.g., after a dialog closes), re-apply our desired icon color.
+            WindowUtils.setStatusBarIconColor(window)
         }
     }
 
@@ -751,7 +764,8 @@ class DetailActivity : AppCompatActivity() {
         dialog.setContentView(R.layout.dialog_font_settings)
         dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
+        // Use the centralized utility to set the status bar icon color for the dialog.
+        dialog.window?.let { WindowUtils.setStatusBarIconColor(it) }
         val slider = dialog.findViewById<Slider>(R.id.font_size_slider)
         slider.value = textViewData.textSize / resources.displayMetrics.scaledDensity
 

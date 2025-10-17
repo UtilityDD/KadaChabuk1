@@ -58,7 +58,9 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener, OnFavoriteChan
         // Adjust system icon colors based on the current theme (light/dark)
         val controller = ViewCompat.getWindowInsetsController(window.decorView)
         val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        // isAppearanceLightStatusBars = true means DARK icons. We want dark icons in dark theme.
+        // For black icons in dark mode, isAppearanceLightStatusBars should be true.
+        // For white icons in light mode, isAppearanceLightStatusBars should be false.
+        // This is the opposite of the default behavior.
         controller?.isAppearanceLightStatusBars = isNightMode
         
         toolbar = findViewById(R.id.toolbar) // Initialize once

@@ -47,7 +47,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.app.ShareCompat
 import com.airbnb.lottie.LottieAnimationView
@@ -118,9 +117,6 @@ class MainActivity : AppCompatActivity() {
         // Make the status bar transparent to show the AppBarLayout's color underneath
         window.statusBarColor = android.graphics.Color.TRANSPARENT
 
-        // Adjust system icon colors to match the current theme (light/dark)
-        setStatusBarIconColor()
-
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.title = ""
@@ -139,7 +135,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Re-apply the status bar icon color every time the activity resumes.
+        // This is crucial for when returning from dialogs or other activities.
+        setStatusBarIconColor()
         // This block ensures that when the user returns from reading a chapter,
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            // This is another crucial part to fix the status bar icon color flicker
+            // when returning from dialogs. This re-asserts the activity's desired icon color.
+            setStatusBarIconColor()
+        }
         // the list is immediately updated to pin the last-read chapter at the top.
         // We only perform this logic if the original list of chapters has been loaded.
         if (originalChapters.isNotEmpty()) {
@@ -171,14 +179,7 @@ class MainActivity : AppCompatActivity() {
      * This is done by checking if the app is currently in night mode.
      */
     private fun setStatusBarIconColor() {
-        ViewCompat.getWindowInsetsController(window.decorView)?.let { controller ->
-            val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-
-            // isAppearanceLightStatusBars = true means DARK icons
-            // isAppearanceLightStatusBars = false means LIGHT icons
-            // In dark theme (isNightMode), we want dark icons.
-            controller.isAppearanceLightStatusBars = isNightMode
-        }
+        WindowUtils.setStatusBarIconColor(window)
     }
 
     private fun handleWindowInsets() {
@@ -318,6 +319,8 @@ class MainActivity : AppCompatActivity() {
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         dialog.window?.attributes?.windowAnimations = R.style.DialogAnimation
         dialog.setCancelable(isCancelable)
+        // Use the centralized utility to set the status bar icon color for the dialog.
+        dialog.window?.let { WindowUtils.setStatusBarIconColor(it) }
 
         val rvLanguages = dialog.findViewById<RecyclerView>(R.id.rv_languages)
         rvLanguages.layoutManager = LinearLayoutManager(this)
@@ -642,6 +645,8 @@ class MainActivity : AppCompatActivity() {
         dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         dialog.window?.attributes?.windowAnimations = R.style.DialogAnimation
+        // Use the centralized utility to set the status bar icon color for the dialog.
+        dialog.window?.let { WindowUtils.setStatusBarIconColor(it) }
 
         val resetOption = dialogView.findViewById<TextView>(R.id.option_reset_history)
         val toggleSwitch = dialogView.findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.option_toggle_history)

@@ -559,7 +559,9 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
             R.id.action_credits -> {
-                bookViewModel.fetchContributors(forceRefresh = true, isSilent = false) // Force refresh on explicit click
+                // Show cached data immediately, and refresh in the background.
+                // The user will see the dialog instantly if data is cached.
+                bookViewModel.fetchContributors(forceRefresh = false, isSilent = false)
                 return true
             }
         }

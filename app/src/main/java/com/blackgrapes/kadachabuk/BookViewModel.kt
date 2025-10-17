@@ -59,6 +59,9 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
                 _chapters.postValue(chaptersFromDb)
                 Log.d("BookViewModel", "Instantly loaded ${chaptersFromDb.size} chapters from DB for $languageCode.")
                 // Now, check for updates silently in the background.
+            } else {
+                // Pre-warm the contributors cache in the background on first load.
+                fetchContributors(forceRefresh = false, isSilent = true)
             }
 
             // Pre-warm the contributors cache in the background.
@@ -135,8 +138,12 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
                 if (!isSilent) { // Only trigger event if not silent
                     _showCreditsDialogEvent.postValue(result)
                 }
-                // We don't need to trigger a background refresh here, as the repository handles caching and freshness.
-                // The main purpose of this block is to quickly provide the cached data.
+                // Silently refresh in the background
+                viewModelScope.launch {
+                    val newResult = repository.getContributors(forceRefresh = true)
+                    newResult.onSuccess { cachedContributors = it }
+                    _contributors.postValue(newResult)
+                }
                 return@launch
             }
 

@@ -11,9 +11,12 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.os.Bundle
+import android.os.Build
 import android.util.Log
+import android.graphics.Color
 import android.view.View
 import android.widget.ScrollView
+import android.graphics.drawable.ColorDrawable
 import android.view.Menu
 import android.widget.ImageView
 import android.view.MenuItem
@@ -346,7 +349,13 @@ class MainActivity : AppCompatActivity() {
         menuInflater.inflate(R.menu.main_menu, menu)
         optionsMenu = menu
         val searchItem = menu.findItem(R.id.action_search)
+
+        // Style the main search icon (magnifying glass) on the toolbar
+        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        searchItem.icon?.setColorFilter(if (isNightMode) Color.DKGRAY else Color.WHITE, PorterDuff.Mode.SRC_ATOP)
+
         val searchView = searchItem.actionView as SearchView
+        styleSearchView(searchView) // Apply custom styling
         setupSearchSuggestions(searchView)
 
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -404,6 +413,42 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    /**
+     * Applies consistent styling to the SearchView to match the toolbar's icon colors.
+     * This ensures the search icon, text, hint text, and close button have the correct
+     * color in both light and dark themes.
+     */
+    private fun styleSearchView(searchView: SearchView) {
+        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val iconColor = if (isNightMode) Color.DKGRAY else Color.WHITE
+        val hintColor = ColorUtils.setAlphaComponent(iconColor, 128) // 50% transparent
+
+        // Style the search icon
+        val searchIcon = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_mag_icon)
+        searchIcon.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+
+        // Style the text, hint, and cursor
+        val searchText = searchView.findViewById<TextView>(androidx.appcompat.R.id.search_src_text)
+        searchText.setTextColor(iconColor)
+        searchText.setHintTextColor(hintColor)
+        // Set the cursor color
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Create a simple drawable for the cursor and set its color
+            searchText.textCursorDrawable = ColorDrawable(iconColor)
+        }
+
+        // Style the close button
+        val closeButton = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_close_btn)
+        closeButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+
+        // Style the back arrow (up button) that appears when search is active
+        val backButton = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_button)
+        backButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+
+        // Style the underline (optional, can be hidden with transparent color)
+        val underline = searchView.findViewById<View>(androidx.appcompat.R.id.search_plate)
+        underline.setBackgroundColor(Color.TRANSPARENT)
+    }
 
 
     override fun onDestroy() {

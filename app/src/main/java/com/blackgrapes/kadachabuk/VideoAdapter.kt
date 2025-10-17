@@ -5,17 +5,20 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.content.SharedPreferences
 import android.view.View
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.squareup.picasso.Picasso
 
 class VideoAdapter(
-    private val videos: List<Video>,
+    private var videos: List<Video>,
     private val playbackListener: VideoPlaybackListener,
     private val onFavoriteChanged: () -> Unit
 ) : RecyclerView.Adapter<VideoAdapter.VideoViewHolder>() {
@@ -60,17 +63,31 @@ class VideoAdapter(
         holder.favoriteButton.setImageResource(if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border)
 
         holder.favoriteButton.setOnClickListener {
-            val currentIsFavorite = favoritePrefs.getBoolean(video.getUniqueId(), false)
-            val newIsFavorite = !currentIsFavorite
-            with(favoritePrefs.edit()) {
-                putBoolean(video.getUniqueId(), newIsFavorite)
-                apply()
-            }
-            holder.favoriteButton.setImageResource(if (newIsFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border)
-            // If this is in a favorites list, we might want to remove it
-            onFavoriteChanged()
-            // This can be handled by notifying the fragment/activity to refresh the list.
-            // For now, just updating the icon is fine.
+            val growAnim = AnimationUtils.loadAnimation(it.context, R.anim.heart_grow)
+            val shrinkAnim = AnimationUtils.loadAnimation(it.context, R.anim.heart_shrink)
+
+            growAnim.setAnimationListener(object : Animation.AnimationListener {
+                override fun onAnimationStart(animation: Animation?) {}
+
+                override fun onAnimationEnd(animation: Animation?) {
+                    val currentIsFavorite = favoritePrefs.getBoolean(video.getUniqueId(), false)
+                    val newIsFavorite = !currentIsFavorite
+                    with(favoritePrefs.edit()) {
+                        putBoolean(video.getUniqueId(), newIsFavorite)
+                        apply()
+                    }
+                    holder.favoriteButton.setImageResource(if (newIsFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border)
+                    holder.favoriteButton.startAnimation(shrinkAnim)
+                    onFavoriteChanged()
+                }
+
+                override fun onAnimationRepeat(animation: Animation?) {}
+            })
+
+            // Disable the button during the animation to prevent rapid clicks
+            holder.favoriteButton.isClickable = false
+            holder.favoriteButton.startAnimation(growAnim)
+            holder.favoriteButton.postDelayed({ holder.favoriteButton.isClickable = true }, 300) // Re-enable after animation
         }
 
         if (position == currentlyPlayingPosition) {
@@ -140,4 +157,30 @@ class VideoAdapter(
     }
 
     override fun getItemCount() = videos.size
+
+    fun updateVideos(newVideos: List<Video>) {
+        val diffCallback = VideoDiffCallback(this.videos, newVideos)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
+        this.videos = newVideos.toList() // Use a new list instance
+        diffResult.dispatchUpdatesTo(this)
+    }
+
+    private class VideoDiffCallback(
+        private val oldList: List<Video>,
+        private val newList: List<Video>
+    ) : DiffUtil.Callback() {
+
+        override fun getOldListSize(): Int = oldList.size
+        override fun getNewListSize(): Int = newList.size
+
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition].getUniqueId() == newList[newItemPosition].getUniqueId()
+        }
+
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            // We only care about the favorite status for content changes in this context,
+            // but comparing the whole object is safer and handles other potential changes.
+            return oldList[oldItemPosition] == newList[newItemPosition]
+        }
+    }
 }

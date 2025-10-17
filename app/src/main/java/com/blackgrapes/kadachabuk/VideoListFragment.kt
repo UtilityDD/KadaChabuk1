@@ -66,6 +66,12 @@ class VideoListFragment : Fragment() {
         return view
     }
 
+    fun updateVideos(newVideos: List<Video>) {
+        this.videos = newVideos
+        // Make sure the adapter is not null before trying to update it
+        (recyclerView.adapter as? VideoAdapter)?.updateVideos(newVideos.toList())
+    }
+
     companion object {
         private const val ARG_VIDEOS = "videos"
 

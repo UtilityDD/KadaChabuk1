@@ -97,9 +97,13 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
                     historyTextView.alpha = 1f
                     historyTextView.translationX = 0f
                     historyTextView.rotationY = 0f
-                    historyTextView.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0) // Hide icon initially
+                    // Set the icon from the start but make it transparent to reserve its space.
+                    val historyIcon = ContextCompat.getDrawable(itemView.context, R.drawable.ic_history)?.mutate()
+                    historyIcon?.alpha = 0 // Make icon transparent
+                    historyTextView.setCompoundDrawablesWithIntrinsicBounds(historyIcon, null, null, null)
                     historyTextView.text = "Reading history" // Initial text
                     historyTextView.visibility = View.VISIBLE
+
 
                     // Animate to the actual data after a delay
                     historyTextView.postDelayed({
@@ -107,7 +111,8 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
                         historyTextView.animate().rotationY(90f).alpha(0f).setDuration(250).withEndAction {
                             // At the halfway point of the flip:
                             historyTextView.text = finalHistoryText
-                            historyTextView.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_history, 0, 0, 0)
+                            // Fade the icon in.
+                            historyTextView.compoundDrawables[0]?.alpha = 255
                             historyTextView.rotationY = -90f
                             historyTextView.animate().rotationY(0f).alpha(1f).setDuration(250).start()
                         }.start()

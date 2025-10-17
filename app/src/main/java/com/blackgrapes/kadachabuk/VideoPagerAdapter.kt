@@ -12,4 +12,8 @@ class VideoPagerAdapter(
     override fun getItemCount(): Int = fragments.size
 
     override fun createFragment(position: Int): Fragment = fragments[position]
+
+    fun getFragment(position: Int): Fragment? {
+        return if (position in fragments.indices) fragments[position] else null
+    }
 }

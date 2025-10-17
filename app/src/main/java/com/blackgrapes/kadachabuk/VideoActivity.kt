@@ -46,6 +46,7 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener, OnFavoriteChan
 
     private var originalTitle: String = "Video Links"
     private var currentViewPagerPosition = 0
+    private var allVideos: List<Video> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -133,6 +134,7 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener, OnFavoriteChan
                         // This heavy parsing now happens on a background thread
                         parseCsv(response)
                     }
+                    allVideos = videoList // Store the full list
 
                     // Now, update the UI on the main thread
                     progressBar.visibility = View.GONE
@@ -228,8 +230,25 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener, OnFavoriteChan
     }
 
     override fun onFavoriteChanged() {
-        // Save the current tab position before refreshing
-        currentViewPagerPosition = viewPager.currentItem
-        fetchVideoData()
+        // This is a more efficient update that doesn't cause the list to scroll.
+        // It avoids calling fetchVideoData() and recreating all the fragments.
+
+        val favoritePrefs = getSharedPreferences("VideoFavorites", Context.MODE_PRIVATE)
+        val favoriteVideos = allVideos.filter { favoritePrefs.getBoolean(it.getUniqueId(), false) }
+
+        // 1. Update the list inside the Favorites fragment
+        val pagerAdapter = viewPager.adapter as? VideoPagerAdapter
+        val favoritesFragment = pagerAdapter?.getFragment(0) as? VideoListFragment
+        favoritesFragment?.updateVideos(favoriteVideos)
+
+        // 2. Update the badge on the Favorites tab
+        val favoritesTab = tabLayout.getTabAt(0)
+        if (favoritesTab != null) {
+            val count = favoriteVideos.size
+            favoritesTab.contentDescription = "Favorites ($count)"
+            val badge = favoritesTab.orCreateBadge
+            badge.number = count
+            badge.isVisible = count > 0
+        }
     }
 }

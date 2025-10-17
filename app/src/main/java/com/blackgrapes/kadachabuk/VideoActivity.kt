@@ -170,13 +170,17 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener {
             // Read all rows but skip the first (header) row
             readAllAsSequence().drop(1).forEach { row ->
                 if (row.size >= 4) {
-                    val video = Video(
-                        sl = row[0].trim(),
-                        link = row[1].trim(),
-                        remark = row[2].trim(),
-                        category = row[3].trim()
-                    )
-                    videos.add(video)
+                    val link = row[1].trim()
+                    // Only add the video if it's a YouTube link
+                    if (link.contains("youtube.com") || link.contains("youtu.be")) {
+                        val video = Video(
+                            sl = row[0].trim(),
+                            originalLink = link,
+                            remark = row[2].trim(),
+                            category = row[3].trim()
+                        )
+                        videos.add(video)
+                    }
                 }
             }
         }

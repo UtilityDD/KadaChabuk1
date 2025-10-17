@@ -10,6 +10,7 @@ import android.view.animation.AnimationUtils
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -23,6 +24,7 @@ class CoverActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applySavedTheme() // Apply the theme first to prevent visual glitches
         setContentView(R.layout.activity_cover)
 
         // Allow the app to draw behind the system bars for a seamless UI
@@ -60,6 +62,12 @@ class CoverActivity : AppCompatActivity() {
         startActivity(intent)
         overridePendingTransition(R.anim.fade_in, R.anim.fade_out)
         finish()
+    }
+
+    private fun applySavedTheme() {
+        val sharedPreferences = getSharedPreferences("ThemePrefs", Context.MODE_PRIVATE)
+        val nightMode = sharedPreferences.getInt("NightMode", AppCompatDelegate.MODE_NIGHT_NO)
+        AppCompatDelegate.setDefaultNightMode(nightMode)
     }
 
     override fun onDestroy() {

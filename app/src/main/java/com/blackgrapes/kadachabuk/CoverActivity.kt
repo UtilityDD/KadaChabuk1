@@ -58,7 +58,7 @@ class CoverActivity : AppCompatActivity() {
         // Now it's safe to start the new activity and its transition.
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
-        overridePendingTransition(R.animator.flip_in_from_middle, R.animator.flip_out_to_middle)
+        overridePendingTransition(R.anim.fade_in, R.anim.fade_out)
         finish()
     }
 

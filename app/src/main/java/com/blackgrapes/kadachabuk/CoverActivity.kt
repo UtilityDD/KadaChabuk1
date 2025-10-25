@@ -73,6 +73,7 @@ class CoverActivity : AppCompatActivity() {
                 "Kada Chabuk", // English
                 "கடா சாபுக்", // Tamil
                 "ಕಡಾ ಚಾಬುಕ್", // Kannada
+                "কড়া চাবুক", // Assamese
                 "કડા ચાબુક", // Gujarati
                 "କଡ଼ା ଚାବୁକ", // Odia
                 "ਕੜਾ ਚਾਬੁਕ", // Punjabi
@@ -87,15 +88,16 @@ class CoverActivity : AppCompatActivity() {
             coverImageView.scaleY = 0f
             tapToOpenText.alpha = 0f
 
-            delay(300) // Initial delay
+            delay(50) // A brief initial delay
 
             // 1. Multilingual Text Sequence
             for (text in languages) {
                 titleTextView.text = text
-                fadeIn(titleTextView, 300)
-                delay(600) // Time the text is visible
-                fadeOut(titleTextView, 300)
-                delay(50) // Brief pause between texts
+                fadeIn(titleTextView, 180)
+                delay(250) // Time the text is fully visible
+                // Start fading out, but don't wait for it to finish.
+                fadeOut(titleTextView, 180, waitForCompletion = false)
+                delay(100) // Wait for a portion of the fade-out before the next loop starts, creating a larger overlap.
             }
 
             // 2. PNG Reveal
@@ -105,15 +107,15 @@ class CoverActivity : AppCompatActivity() {
                 .alpha(1f)
                 .scaleX(1f)
                 .scaleY(1f)
-                .setDuration(600)
+                .setDuration(350)
                 .setInterpolator(AccelerateDecelerateInterpolator())
                 .start()
 
-            delay(400) // Wait a bit before showing the "tap to open" text
+            delay(200) // Wait a bit before showing the "tap to open" text
 
             // 3. "Touch to Open" text with pulse animation
             tapToOpenText.visibility = View.VISIBLE
-            fadeIn(tapToOpenText, 400)
+            fadeIn(tapToOpenText, 300)
             val pulse = AnimationUtils.loadAnimation(this@CoverActivity, R.anim.pulse)
             tapToOpenText.startAnimation(pulse)
 
@@ -131,10 +133,12 @@ class CoverActivity : AppCompatActivity() {
         delay(duration)
     }
 
-    private suspend fun fadeOut(view: View, duration: Long) {
+    private suspend fun fadeOut(view: View, duration: Long, waitForCompletion: Boolean = true) {
         view.animate().alpha(0f).setDuration(duration).start()
-        delay(duration)
-        view.visibility = View.INVISIBLE
+        if (waitForCompletion) {
+            delay(duration)
+            view.visibility = View.INVISIBLE
+        }
     }
 
     private fun navigateToMain() {

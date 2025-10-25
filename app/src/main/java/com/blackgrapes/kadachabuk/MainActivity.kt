@@ -35,6 +35,7 @@ import android.util.TypedValue
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.app.AppCompatActivity
@@ -52,10 +53,17 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.app.ShareCompat
 import com.airbnb.lottie.LottieAnimationView
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.CoroutineScope
 import com.google.android.material.badge.BadgeDrawable
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.install.model.UpdateAvailability
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -103,6 +111,20 @@ class MainActivity : AppCompatActivity() {
     private var searchJob: Job? = null
     private val uiScope = CoroutineScope(Dispatchers.Main)
 
+    // --- In-App Update Properties ---
+    private lateinit var appUpdateManager: AppUpdateManager
+    private val updateLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        if (result.resultCode != RESULT_OK) {
+            Log.e("MainActivity", "In-App Update flow failed with result code: ${result.resultCode}")
+        }
+    }
+    private val installStateUpdatedListener = InstallStateUpdatedListener { state ->
+        if (state.installStatus() == InstallStatus.DOWNLOADED) {
+            // After the update is downloaded, show a notification
+            // and request user confirmation to restart the app.
+            showUpdateDownloadedSnackbar()
+        }
+    }
     // Define a string resource for the default loading message if not already present
     // For example, in res/values/strings.xml:
     // <string name="loading_status_default">Loading...</string>
@@ -133,6 +155,10 @@ class MainActivity : AppCompatActivity() {
         checkIfLanguageNotSet()
         setupFab()
         observeViewModel()
+
+        // Initialize and check for app updates
+        appUpdateManager = AppUpdateManagerFactory.create(this)
+        checkForAppUpdate()
     }
 
     override fun onResume() {
@@ -140,6 +166,16 @@ class MainActivity : AppCompatActivity() {
         // Re-apply the status bar icon color every time the activity resumes.
         // This is crucial for when returning from dialogs or other activities.
         setStatusBarIconColor()
+
+        // Check for updates that were downloaded in the background.
+        appUpdateManager.appUpdateInfo.addOnSuccessListener { appUpdateInfo ->
+            if (appUpdateInfo.installStatus() == InstallStatus.DOWNLOADED) {
+                showUpdateDownloadedSnackbar()
+            }
+        }
+
+        appUpdateManager.registerListener(installStateUpdatedListener)
+
         // This block ensures that when the user returns from reading a chapter,
     }
 
@@ -174,6 +210,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Unregister the listener to avoid leaks.
+        appUpdateManager.unregisterListener(installStateUpdatedListener)
     }
 
     /**
@@ -509,6 +551,41 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         // Cancel any running jobs to avoid memory leaks
         searchJob?.cancel()
+    }
+
+    private fun checkForAppUpdate() {
+        val appUpdateInfoTask = appUpdateManager.appUpdateInfo
+
+        appUpdateInfoTask.addOnSuccessListener { appUpdateInfo ->
+            if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
+                && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)
+            ) {
+                // An update is available and flexible updates are allowed.
+                // Start the update flow.
+                appUpdateManager.startUpdateFlowForResult(
+                    appUpdateInfo,
+                    AppUpdateType.FLEXIBLE,
+                    this,
+                    1 // You can use this request code to identify the update later if needed
+                )
+            } else {
+                Log.d("MainActivity", "No new update available.")
+            }
+        }
+    }
+
+    private fun showUpdateDownloadedSnackbar() {
+        Snackbar.make(
+            findViewById(R.id.main),
+            "A new version has been downloaded.",
+            Snackbar.LENGTH_INDEFINITE
+        ).apply {
+            setAction("RESTART") {
+                // Trigger the final installation of the update.
+                appUpdateManager.completeUpdate()
+            }
+            show()
+        }
     }
 
     private fun saveSearchQuery(query: String) {

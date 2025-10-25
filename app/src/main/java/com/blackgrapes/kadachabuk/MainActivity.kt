@@ -60,6 +60,8 @@ import com.google.android.material.badge.BadgeDrawable
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import io.noties.markwon.Markwon
+import io.noties.markwon.linkify.LinkifyPlugin
 import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
@@ -910,6 +912,12 @@ class MainActivity : AppCompatActivity() {
                             savedLangCode?.let { langCode -> bookViewModel.fetchAboutInfo(langCode, forceRefresh = false) }
                         }
                         bookViewModel.hasShownInitialAboutDialog = true
+
+                        // Silently pre-fetch the "About" info in the background for the next time.
+                        val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+                        val savedLangCode = sharedPreferences.getString("selected_language_code", null)
+                        savedLangCode?.let { langCode -> bookViewModel.fetchAboutInfo(langCode, forceRefresh = true, isSilent = true) }
+
                     }
 
                     val reorderedChapters = reorderChaptersWithLastRead(it)
@@ -1053,9 +1061,10 @@ class MainActivity : AppCompatActivity() {
         // If content is not provided, it means we need to fetch it first.
         if (content == null) {
             // Set a flag in the ViewModel indicating our intent to show the dialog once data arrives.
-            bookViewModel.isFetchingAboutForDialog.value = true
+            bookViewModel.isFetchingAboutForDialog.value = true // This flag is still needed to trigger the observer
             val sharedPreferences = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
             val savedLangCode = sharedPreferences.getString("selected_language_code", null)
+            // Always use the cache for instant dialog display. The background fetch will keep it fresh.
             savedLangCode?.let { bookViewModel.fetchAboutInfo(it, forceRefresh = false) }
             return // Exit the function; the observer will call this function again with content.
         }
@@ -1065,7 +1074,12 @@ class MainActivity : AppCompatActivity() {
         val dontShowAgainCheckbox = dialogView.findViewById<CheckBox>(R.id.checkbox_dont_show_again)
         val closeButton = dialogView.findViewById<Button>(R.id.button_close)
 
-        aboutContentTextView.text = content
+        // Use Markwon to render the content as Markdown, enabling clickable links.
+        val markwon = Markwon.builder(this)
+            .usePlugin(LinkifyPlugin.create())
+            .build()
+        markwon.setMarkdown(aboutContentTextView, content ?: "")
+
 
         // Show the "Don't show again" checkbox only on the initial startup dialog.
         // The hasShownInitialAboutDialog flag from the ViewModel is the reliable source of truth here.

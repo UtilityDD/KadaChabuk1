@@ -122,9 +122,12 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun fetchAboutInfo(languageCode: String, forceRefresh: Boolean = false) {
+    fun fetchAboutInfo(languageCode: String, forceRefresh: Boolean = false, isSilent: Boolean = false) {
         viewModelScope.launch {
-            _aboutInfo.postValue(repository.getAboutInfo(languageCode, forceRefresh))
+            val result = repository.getAboutInfo(languageCode, forceRefresh)
+            if (!isSilent) { // Only post the value if it's not a silent fetch
+                _aboutInfo.postValue(result)
+            }
         }
     }
 

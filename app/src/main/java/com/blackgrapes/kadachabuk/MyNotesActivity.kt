@@ -1,12 +1,14 @@
 package com.blackgrapes.kadachabuk
 
 import android.content.Context
+import android.widget.EditText
 import androidx.core.app.ShareCompat
 import android.os.Bundle
 import android.content.res.Configuration
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.LinearLayout
+import android.view.inputmethod.InputMethodManager
 import android.widget.ImageButton
 import android.util.TypedValue
 import android.view.ViewGroup
@@ -19,6 +21,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.appbar.MaterialToolbar
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -92,7 +95,10 @@ class MyNotesActivity : AppCompatActivity()  {
             onDeleteClick = { noteItem, position ->
                 showDeleteConfirmationDialog(noteItem, position)
             },
-            onShareClick = { noteItem -> shareNote(noteItem.text) }
+            onShareClick = { noteItem -> shareNote(noteItem.text) },
+            onSaveClick = { noteItem, newText, position ->
+                saveEditedNote(noteItem, newText, position)
+            }
         )
 
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -156,6 +162,30 @@ class MyNotesActivity : AppCompatActivity()  {
         updateTitle()
     }
 
+    private fun saveEditedNote(oldNoteItem: NoteItem, newText: String, position: Int) {
+        // Create a new NoteItem with the updated text and a new timestamp
+        val newNoteObject = JSONObject()
+        newNoteObject.put("text", newText)
+        newNoteObject.put("timestamp", System.currentTimeMillis())
+
+        val newNoteItem = NoteItem(newText, newNoteObject.getLong("timestamp"), newNoteObject.toString())
+
+        // Update SharedPreferences
+        val prefs = getSharedPreferences(NOTES_PREFS, Context.MODE_PRIVATE)
+        val existingNotes = prefs.getStringSet(KEY_NOTES, emptySet())?.toMutableSet() ?: mutableSetOf()
+
+        // Remove the old note and add the new one
+        existingNotes.remove(oldNoteItem.originalJson)
+        existingNotes.add(newNoteItem.originalJson)
+        prefs.edit().putStringSet(KEY_NOTES, existingNotes).apply()
+
+        // Update the local list and notify the adapter
+        notes[position] = newNoteItem
+        // Sort again to maintain order by timestamp
+        notes.sortByDescending { it.timestamp }
+        noteAdapter.notifyDataSetChanged() // Use notifyDataSetChanged after sorting
+    }
+
     private fun showDeleteAllConfirmationDialog() {
         MaterialAlertDialogBuilder(this)
             .setTitle("Delete All Notes?")
@@ -195,69 +225,97 @@ class MyNotesActivity : AppCompatActivity()  {
 class NoteAdapter(
     private val notes: MutableList<NoteItem>,
     private val onDeleteClick: (NoteItem, Int) -> Unit,
-    private val onShareClick: (NoteItem) -> Unit
+    private val onShareClick: (NoteItem) -> Unit,
+    private val onSaveClick: (NoteItem, String, Int) -> Unit
 ) : RecyclerView.Adapter<NoteAdapter.NoteViewHolder>() {
 
     class NoteViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
-        lateinit var noteContent: TextView
-        lateinit var noteSerial: TextView
-        lateinit var noteDate: TextView
-        lateinit var shareButton: ImageButton
-        lateinit var deleteButton: ImageButton
-
-        init {
-            // Check if the item view is a ViewGroup to add our button layout
-            if (view is ViewGroup) {
-                noteContent = view.findViewById(R.id.text_view_note_content)
-                noteSerial = view.findViewById(R.id.text_view_note_serial)
-                noteDate = view.findViewById(R.id.text_view_note_date)
-
-                // Programmatically create a horizontal LinearLayout for the buttons
-                val buttonLayout = LinearLayout(view.context).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = android.view.Gravity.END
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                    )
-                }
-
-                // Inflate the buttons and add them to our new layout
-                shareButton = LayoutInflater.from(view.context)
-                    .inflate(R.layout.item_note, null)
-                    .findViewById(R.id.button_share_note)
-                deleteButton = LayoutInflater.from(view.context)
-                    .inflate(R.layout.item_note, null)
-                    .findViewById(R.id.button_delete_note)
-
-                (shareButton.parent as? ViewGroup)?.removeView(shareButton)
-                (deleteButton.parent as? ViewGroup)?.removeView(deleteButton)
-
-                buttonLayout.addView(shareButton)
-                buttonLayout.addView(deleteButton)
-
-                // Add the button layout to the main item view
-                view.addView(buttonLayout)
-            }
-        }
+        // The views are now directly part of the inflated layout.
+        val cardView: MaterialCardView = view as MaterialCardView
+        val noteContent: EditText = view.findViewById(R.id.text_view_note_content)
+        val noteDate: TextView = view.findViewById(R.id.text_view_note_date)
+        val shareButton: ImageButton = view.findViewById(R.id.button_share_note)
+        val deleteButton: ImageButton = view.findViewById(R.id.button_delete_note)
+        val saveButton: ImageButton = view.findViewById(R.id.button_save_note)
+        val editButton: ImageButton = view.findViewById(R.id.button_edit_note)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NoteViewHolder {
+        // Inflate the complete item_note.xml layout directly.
+        // This is simpler and more reliable than building the layout programmatically.
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_note_base, parent, false)
+            .inflate(R.layout.item_note, parent, false)
         return NoteViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: NoteViewHolder, position: Int) {
         val noteItem = notes[position]
-        holder.noteContent.text = noteItem.text
+        holder.noteContent.setText(noteItem.text)
+        // Ensure the initial state is not editable
+        holder.noteContent.isFocusable = false
+        holder.noteContent.isFocusableInTouchMode = false
+        holder.noteContent.isCursorVisible = false
 
-        // Calculate serial number. Since the list is sorted descending, the oldest note is last.
-        val serialNumber = notes.size - position
-        holder.noteSerial.text = "$serialNumber."
+        fun enterEditMode() {
+            holder.noteContent.isFocusable = true
+            holder.noteContent.isFocusableInTouchMode = true
+            holder.noteContent.isCursorVisible = true
+            holder.noteContent.requestFocus()
+            holder.noteContent.setSelection(holder.noteContent.text.length) // Move cursor to the end
+
+            // Show keyboard
+            val imm = holder.view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(holder.noteContent, InputMethodManager.SHOW_IMPLICIT)
+
+            // Show save button, hide others
+            holder.saveButton.visibility = View.VISIBLE
+            holder.editButton.visibility = View.GONE
+            holder.shareButton.visibility = View.GONE
+            holder.deleteButton.visibility = View.GONE
+
+            // Change card color to indicate editing
+            val typedValue = TypedValue()
+            holder.view.context.theme.resolveAttribute(com.google.android.material.R.attr.colorSurfaceContainerHighest, typedValue, true)
+            holder.cardView.setCardBackgroundColor(typedValue.data)
+        }
+
+        fun exitEditMode(saveChanges: Boolean) {
+            if (saveChanges) {
+                val newText = holder.noteContent.text.toString()
+                onSaveClick(noteItem, newText, holder.adapterPosition)
+            }
+
+            // Hide keyboard
+            val imm = holder.view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(holder.view.windowToken, 0)
+
+            // Restore original state
+            holder.noteContent.isFocusable = false
+            holder.noteContent.isFocusableInTouchMode = false
+            holder.noteContent.isCursorVisible = false
+            holder.noteContent.clearFocus()
+
+            holder.saveButton.visibility = View.GONE
+            holder.editButton.visibility = View.VISIBLE
+            holder.shareButton.visibility = View.VISIBLE
+            holder.deleteButton.visibility = View.VISIBLE
+
+            // Restore original card color
+            val typedValue = TypedValue()
+            holder.view.context.theme.resolveAttribute(com.google.android.material.R.attr.colorSurfaceContainer, typedValue, true)
+            holder.cardView.setCardBackgroundColor(typedValue.data)
+        }
+
+        holder.editButton.setOnClickListener {
+            enterEditMode()
+        }
+
+        holder.saveButton.setOnClickListener {
+            exitEditMode(saveChanges = true)
+        }
 
         if (noteItem.timestamp > 0) {
-            val sdf = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+            val sdf = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) // Example format
             holder.noteDate.text = sdf.format(Date(noteItem.timestamp))
             holder.noteDate.visibility = View.VISIBLE
         } else {

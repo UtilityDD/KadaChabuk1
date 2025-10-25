@@ -10,13 +10,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <TextView
+        <EditText
             android:id="@+id/text_view_note_content"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
             android:lineSpacingMultiplier="1.2"
             android:padding="16dp"
-            android:textIsSelectable="true"
             android:textAppearance="?attr/textAppearanceBody2"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toTopOf="@+id/note_divider"
@@ -46,6 +46,30 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/note_divider"
             tools:text="Saved on: Jan 1, 2024" />
+
+        <ImageButton
+            android:id="@+id/button_save_note"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Save note"
+            android:src="@drawable/ic_checkmark"
+            android:visibility="gone" 
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/note_divider"
+            app:tint="?attr/colorPrimary"
+            tools:visibility="visible" />
+
+        <ImageButton
+            android:id="@+id/button_edit_note"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Edit note"
+            android:src="@drawable/ic_edit"
+            app:layout_constraintEnd_toStartOf="@id/button_share_note"
+            app:layout_constraintTop_toBottomOf="@id/note_divider"
+            app:tint="?attr/colorPrimary" />
 
         <ImageButton
             android:id="@+id/button_share_note"

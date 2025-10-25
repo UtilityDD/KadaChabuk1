@@ -51,17 +51,5 @@
             android:paddingVertical="4dp"
             android:textAppearance="?attr/textAppearanceBodyLarge"
             tools:text="Hide History" />
-
-        <com.google.android.material.checkbox.MaterialCheckBox
-            android:id="@+id/checkbox_filter_by_time"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" 
-            android:layout_marginStart="20dp"
-            android:layout_marginEnd="20dp"
-            android:layout_marginTop="4dp"
-            android:text="Only show history for reading > 5 minutes"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?attr/colorOnSurfaceVariant" />
-
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

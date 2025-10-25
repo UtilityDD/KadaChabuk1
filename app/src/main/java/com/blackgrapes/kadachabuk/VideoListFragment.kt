@@ -75,7 +75,7 @@ class VideoListFragment : Fragment() {
         this.videos = newVideos
         updateEmptyViewVisibility()
         // Make sure the adapter is not null before trying to update it
-        (recyclerView.adapter as? VideoAdapter)?.updateVideos(newVideos.toList())
+        (recyclerView.adapter as? VideoAdapter)?.updateVideos(newVideos)
     }
 
     companion object {

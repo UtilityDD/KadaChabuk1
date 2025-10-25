@@ -848,7 +848,12 @@ class MainActivity : AppCompatActivity() {
                 rvDownloadedChapterHeadings.visibility = View.GONE // Hide progress list
                 // When loading is finished, ensure the main content or error is visible.
                 if (bookViewModel.error.value == null && chapterAdapter.itemCount > 0) {
-                    recyclerViewChapters.visibility = View.VISIBLE
+                    // Only animate if the view is not already visible
+                    if (recyclerViewChapters.visibility != View.VISIBLE) {
+                        val fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in)
+                        recyclerViewChapters.startAnimation(fadeIn)
+                        recyclerViewChapters.visibility = View.VISIBLE
+                    }
                 }
             }
         }

@@ -22,6 +22,7 @@ import android.view.Menu
 import android.widget.ImageView
 import android.view.MenuItem
 import android.widget.Button
+import androidx.activity.result.IntentSenderRequest
 import androidx.core.graphics.ColorUtils
 import android.widget.CheckBox
 import java.util.concurrent.TimeUnit
@@ -61,6 +62,7 @@ import com.google.android.material.badge.BadgeDrawable
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
 import io.noties.markwon.Markwon
 import io.noties.markwon.linkify.LinkifyPlugin
 import com.google.android.play.core.install.InstallStateUpdatedListener
@@ -567,9 +569,8 @@ class MainActivity : AppCompatActivity() {
                 // Start the update flow.
                 appUpdateManager.startUpdateFlowForResult(
                     appUpdateInfo,
-                    AppUpdateType.FLEXIBLE,
-                    this,
-                    1 // You can use this request code to identify the update later if needed
+                    updateLauncher,
+                    AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
                 )
             } else {
                 Log.d("MainActivity", "No new update available.")

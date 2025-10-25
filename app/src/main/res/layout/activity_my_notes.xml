@@ -24,8 +24,9 @@
                 android:layout_height="?attr/actionBarSize"
                 app:navigationIcon="@drawable/ic_arrow_back"
                 app:title="My Notes"
-                app:titleTextColor="?attr/colorOnPrimary"
-                app:navigationIconTint="?attr/colorOnPrimary" />
+                app:menu="@menu/notes_menu" 
+                app:navigationIconTint="?attr/colorOnPrimary"
+                app:titleTextColor="?attr/colorOnPrimary"/>
         </com.google.android.material.appbar.AppBarLayout>
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_view_notes"
@@ -39,10 +40,15 @@
     <TextView
         android:id="@+id/text_view_no_notes"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:drawablePadding="16dp"
         android:gravity="center"
-        android:text="No notes saved yet."
-        android:textAppearance="?attr/textAppearanceBody1"
-        android:visibility="gone" />
+        android:padding="32dp"
+        android:text="You can save notes by selecting text inside a chapter."
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        app:drawableTopCompat="@drawable/ic_note" />
 
 </FrameLayout>

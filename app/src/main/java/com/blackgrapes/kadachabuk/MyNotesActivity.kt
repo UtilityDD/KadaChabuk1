@@ -10,6 +10,7 @@ import android.widget.LinearLayout
 import android.widget.ImageButton
 import android.util.TypedValue
 import android.view.ViewGroup
+import android.widget.Toast
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -73,6 +74,16 @@ class MyNotesActivity : AppCompatActivity()  {
 
         toolbar.setNavigationOnClickListener {
             finish()
+        }
+
+        toolbar.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.action_delete_all_notes -> {
+                    showDeleteAllConfirmationDialog()
+                    true
+                }
+                else -> false
+            }
         }
 
         notes = getSavedNotes().toMutableList()
@@ -141,6 +152,31 @@ class MyNotesActivity : AppCompatActivity()  {
         notes.removeAt(position)
         noteAdapter.notifyItemRemoved(position)
 
+        updateEmptyState()
+        updateTitle()
+    }
+
+    private fun showDeleteAllConfirmationDialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Delete All Notes?")
+            .setMessage("This will permanently delete all of your saved notes. This action cannot be undone.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Delete All") { _, _ ->
+                deleteAllNotes()
+            }
+            .show()
+    }
+
+    private fun deleteAllNotes() {
+        // Clear from SharedPreferences
+        val prefs = getSharedPreferences(NOTES_PREFS, Context.MODE_PRIVATE)
+        prefs.edit().clear().apply()
+
+        // Clear the local list and notify the adapter
+        notes.clear()
+        noteAdapter.notifyDataSetChanged()
+
+        Toast.makeText(this, "All notes have been deleted.", Toast.LENGTH_SHORT).show()
         updateEmptyState()
         updateTitle()
     }

@@ -23,6 +23,7 @@ import android.view.MenuItem
 import android.widget.Button
 import androidx.core.graphics.ColorUtils
 import android.widget.CheckBox
+import java.util.concurrent.TimeUnit
 import android.graphics.PorterDuff
 import android.widget.ProgressBar
 import android.view.animation.AnimationUtils
@@ -650,6 +651,9 @@ class MainActivity : AppCompatActivity() {
 
         val resetOption = dialogView.findViewById<TextView>(R.id.option_reset_history)
         val toggleSwitch = dialogView.findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.option_toggle_history)
+        val totalReadsTextView = dialogView.findViewById<TextView>(R.id.habit_total_reads)
+        val totalTimeTextView = dialogView.findViewById<TextView>(R.id.habit_total_time)
+        val habitLayout = dialogView.findViewById<View>(R.id.layout_reading_habit)
 
         toggleSwitch.text = "Show Reading History"
         toggleSwitch.isChecked = isHistoryVisible
@@ -665,6 +669,29 @@ class MainActivity : AppCompatActivity() {
             chapterAdapter.notifyDataSetChanged()
             // The toast is a bit redundant since the switch state is clear.
             // dialog.dismiss() // Keep dialog open to change other settings
+        }
+
+        // Calculate and display reading habits
+        var totalReadCount = 0
+        var totalReadTimeMs = 0L
+        val allEntries: Map<String, *> = historyPrefs.all
+
+        for ((key, value) in allEntries) {
+            if (key.startsWith("count_") && value is Int) {
+                totalReadCount += value
+            } else if (key.startsWith("time_") && value is Long) {
+                totalReadTimeMs += value
+            }
+        }
+
+        if (totalReadCount > 0) {
+            val formattedTotalTime = TimeUtils.formatDuration(totalReadTimeMs)
+
+            totalReadsTextView.text = "• Total $totalReadCount times read"
+            totalTimeTextView.text = "• Total $formattedTotalTime reading time"
+            habitLayout.visibility = View.VISIBLE
+        } else {
+            habitLayout.visibility = View.GONE
         }
 
         dialog.show()

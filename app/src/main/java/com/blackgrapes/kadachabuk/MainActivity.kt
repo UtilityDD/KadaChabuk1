@@ -10,6 +10,7 @@ import android.provider.BaseColumns
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.res.Configuration
+import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Build
 import android.util.Log
@@ -737,9 +738,9 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
             R.id.action_credits -> {
-                // Show cached data immediately, and refresh in the background.
-                // The user will see the dialog instantly if data is cached.
-                bookViewModel.fetchContributors(forceRefresh = false, isSilent = false)
+                // Set the flag and fetch from cache. The observer will handle showing the dialog.
+                bookViewModel.isFetchingCreditsForDialog.value = true
+                bookViewModel.fetchContributors(forceRefresh = false)
                 return true
             }
         }
@@ -918,6 +919,9 @@ class MainActivity : AppCompatActivity() {
                         val savedLangCode = sharedPreferences.getString("selected_language_code", null)
                         savedLangCode?.let { langCode -> bookViewModel.fetchAboutInfo(langCode, forceRefresh = true, isSilent = true) }
 
+                        // Also, silently pre-fetch the "Credits" info in the background.
+                        bookViewModel.fetchContributors(forceRefresh = true, isSilent = true)
+
                     }
 
                     val reorderedChapters = reorderChaptersWithLastRead(it)
@@ -1045,14 +1049,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Observe the event that triggers the Credits dialog
-        bookViewModel.showCreditsDialogEvent.observe(this) { result ->
-            result.onSuccess { contributorList ->
-                showContributorsDialog(contributorList)
-            }.onFailure {
-                Toast.makeText(this, "Could not load credits.", Toast.LENGTH_SHORT).show()
-                Log.e("MainActivity", "Failed to get contributors", it)
-                // Optionally, you might want to show a cached version if available and not silent
+        // Observe the contributors LiveData
+        bookViewModel.contributors.observe(this) { result ->
+            if (bookViewModel.isFetchingCreditsForDialog.value == true) {
+                result.onSuccess { contributorList ->
+                    showContributorsDialog(contributorList)
+                }.onFailure {
+                    Toast.makeText(this, "Could not load credits.", Toast.LENGTH_SHORT).show()
+                    Log.e("MainActivity", "Failed to get contributors", it)
+                }
+                // Reset the flag after attempting to show the dialog
+                bookViewModel.isFetchingCreditsForDialog.value = false
             }
         }
     }
@@ -1070,6 +1077,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val dialogView = layoutInflater.inflate(R.layout.dialog_about, null)
+        val titleTextView = dialogView.findViewById<TextView>(R.id.about_title)
         val aboutContentTextView = dialogView.findViewById<TextView>(R.id.about_content)
         val dontShowAgainCheckbox = dialogView.findViewById<CheckBox>(R.id.checkbox_dont_show_again)
         val closeButton = dialogView.findViewById<Button>(R.id.button_close)
@@ -1079,6 +1087,12 @@ class MainActivity : AppCompatActivity() {
             .usePlugin(LinkifyPlugin.create())
             .build()
         markwon.setMarkdown(aboutContentTextView, content ?: "")
+
+        // Apply custom styling to the title
+        titleTextView.setTypeface(null, Typeface.ITALIC)
+        val typedValue = TypedValue()
+        theme.resolveAttribute(com.google.android.material.R.attr.colorOnSurfaceVariant, typedValue, true)
+        titleTextView.setTextColor(typedValue.data)
 
 
         // Show the "Don't show again" checkbox only on the initial startup dialog.
@@ -1148,24 +1162,49 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showContributorsDialog(contributors: List<Contributor>) {
-        if (contributors.isEmpty()) {
-            Toast.makeText(this, "No contributors to show at the moment.", Toast.LENGTH_SHORT).show()
-            return
+        // Reuse the 'About' dialog layout for a consistent UI.
+        val dialogView = layoutInflater.inflate(R.layout.dialog_about, null)
+        val titleTextView = dialogView.findViewById<TextView>(R.id.about_title)
+        val contentTextView = dialogView.findViewById<TextView>(R.id.about_content)
+        val closeButton = dialogView.findViewById<Button>(R.id.button_close)
+        val dontShowAgainCheckbox = dialogView.findViewById<CheckBox>(R.id.checkbox_dont_show_again)
+
+        // Set the correct title for the Credits dialog.
+        titleTextView.text = "Credits"
+
+        // Apply custom styling to the title to match the About dialog
+        titleTextView.setTypeface(null, Typeface.ITALIC)
+        val typedValue = TypedValue()
+        theme.resolveAttribute(com.google.android.material.R.attr.colorOnSurfaceVariant, typedValue, true)
+        titleTextView.setTextColor(typedValue.data)
+
+        // The "Don't show again" checkbox is only for the initial 'About' dialog.
+        dontShowAgainCheckbox.visibility = View.GONE
+
+        // Always show the introductory text at the top.
+        val introText = "We are grateful to everyone who has supported this project. If you'd like to contribute by suggesting corrections, citing mistakes, or in any other way, please contact us at **kadachabuk@gmail.com**."
+
+        val markdownContent = if (contributors.isNotEmpty()) {
+            // If contributors exist, append them below the intro text with a separator.
+            val contributorsListString = contributors.joinToString(separator = "\n\n") {
+                "**${it.name}**\n*${it.address}*" // Making the address italic for better visual style.
+            }
+            "$introText\n\n---\n\n$contributorsListString"
+        } else {
+            introText // If no contributors, just show the intro text.
         }
 
-        val dialogView = layoutInflater.inflate(R.layout.dialog_credits, null)
-
-        val rvContributors = dialogView.findViewById<RecyclerView>(R.id.rv_contributors)
-        rvContributors.layoutManager = LinearLayoutManager(this)
-        rvContributors.adapter = ContributorAdapter(contributors)
+        // Use Markwon to render the Markdown content.
+        val markwon = Markwon.builder(this).build()
+        markwon.setMarkdown(contentTextView, markdownContent)
 
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogView)
-            .setPositiveButton("OK", null)
             .create()
 
-        // Apply custom animation
-        dialog.window?.attributes?.windowAnimations = R.style.DialogAnimation
+        closeButton.setOnClickListener {
+            dialog.dismiss()
+        }
 
         dialog.show()
     }

@@ -17,9 +17,8 @@ object WindowUtils {
      */
     fun setStatusBarIconColor(window: Window) {
         ViewCompat.getWindowInsetsController(window.decorView)?.let { controller ->
-            val isNightMode = (window.context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-            // For black icons in dark mode (isNightMode=true), isAppearanceLightStatusBars must be true.
-            controller.isAppearanceLightStatusBars = isNightMode
+            // Set isAppearanceLightStatusBars to false to always enforce light (e.g., white) icons.
+            controller.isAppearanceLightStatusBars = false
         }
     }
 }

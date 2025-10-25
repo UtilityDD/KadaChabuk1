@@ -717,7 +717,6 @@ class DetailActivity : AppCompatActivity() {
 
         val spannable = SpannableStringBuilder(textViewData.text)
 
-        // 1. Revert the previously highlighted item (if any) to the standard highlight color.
         if (previousMatchIndex != -1 && previousMatchIndex != matchIndex) {
             val prevCharIndex = matchIndices[previousMatchIndex]
             spannable.setSpan(
@@ -728,7 +727,6 @@ class DetailActivity : AppCompatActivity() {
             )
         }
 
-        // 2. Highlight the new current item with a distinct color.
         spannable.setSpan(
             BackgroundColorSpan(ContextCompat.getColor(this, R.color.current_match_highlight)),
             charIndex,

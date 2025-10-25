@@ -553,31 +553,34 @@ class MainActivity : AppCompatActivity() {
      * color in both light and dark themes.
      */
     private fun styleSearchView(searchView: SearchView) {
-        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        val iconColor = if (isNightMode) Color.DKGRAY else Color.WHITE
-        val hintColor = ColorUtils.setAlphaComponent(iconColor, 128) // 50% transparent
+        // Resolve theme attributes for consistent coloring
+        val typedValue = TypedValue()
+        theme.resolveAttribute(com.google.android.material.R.attr.colorOnPrimary, typedValue, true)
+        val iconAndTextColor = typedValue.data
+
+        val hintColor = ColorUtils.setAlphaComponent(iconAndTextColor, 180) // ~70% opacity for hint
 
         // Style the search icon
         val searchIcon = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_mag_icon)
-        searchIcon.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+        searchIcon.setColorFilter(iconAndTextColor, PorterDuff.Mode.SRC_IN)
 
         // Style the text, hint, and cursor
         val searchText = searchView.findViewById<TextView>(androidx.appcompat.R.id.search_src_text)
-        searchText.setTextColor(iconColor)
+        searchText.setTextColor(iconAndTextColor)
         searchText.setHintTextColor(hintColor)
         // Set the cursor color
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // Create a simple drawable for the cursor and set its color
-            searchText.textCursorDrawable = ColorDrawable(iconColor)
+            searchText.textCursorDrawable = ColorDrawable(iconAndTextColor)
         }
 
         // Style the close button
         val closeButton = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_close_btn)
-        closeButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+        closeButton.setColorFilter(iconAndTextColor, PorterDuff.Mode.SRC_IN)
 
         // Style the back arrow (up button) that appears when search is active
         val backButton = searchView.findViewById<ImageView>(androidx.appcompat.R.id.search_button)
-        backButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+        backButton.setColorFilter(iconAndTextColor, PorterDuff.Mode.SRC_IN)
 
         // Style the underline (optional, can be hidden with transparent color)
         val underline = searchView.findViewById<View>(androidx.appcompat.R.id.search_plate)

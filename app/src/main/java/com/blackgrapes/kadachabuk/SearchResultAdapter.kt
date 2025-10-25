@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
+import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
@@ -75,7 +76,7 @@ class SearchResultAdapter(private var searchResults: List<SearchResult>) :
                 return spannableString
             }
 
-            val highlightColor = ContextCompat.getColor(itemView.context, R.color.highlight_color)
+            val highlightColor = ContextCompat.getColor(itemView.context, R.color.highlight_color) // Make sure this color is defined for light/dark themes
             // Create a locale from the language code to ensure correct word boundary detection
             val locale = if (languageCode.isNotEmpty()) {
                 Locale(languageCode)

@@ -415,8 +415,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDownloadConfirmationDialog(langName: String, onConfirm: () -> Unit) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Download Chapters?")
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle("Download in $langName?") // Corrected typo from "Dowmload"
             .setMessage(HtmlCompat.fromHtml(
                 "<i>Kada Chabuk</i> in '$langName' are not downloaded. Would you like to download them now? This may take a few moments depending on your network speed.",
                 HtmlCompat.FROM_HTML_MODE_LEGACY
@@ -425,7 +425,29 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Download") { _, _ ->
                 onConfirm()
             }
-            .show()
+            .create()
+
+        dialog.setOnShowListener {
+            val positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE)
+            val typedValue = TypedValue()
+            // Resolve the theme's primary color
+            theme.resolveAttribute(android.R.attr.colorPrimary, typedValue, true)
+            val primaryColor = if (typedValue.resourceId != 0) {
+                ContextCompat.getColor(this, typedValue.resourceId)
+            } else typedValue.data
+
+            // Apply the colors to make it a contained button
+            positiveButton.setBackgroundColor(primaryColor)
+            positiveButton.setTextColor(Color.WHITE)
+
+            // Reduce padding to make the button's "box" smaller
+            val horizontalPadding = (16 * resources.displayMetrics.density).toInt() // 16dp
+            val verticalPadding = (8 * resources.displayMetrics.density).toInt()   // 8dp
+            positiveButton.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+
+        }
+
+        dialog.show()
     }
 
     private fun showDeleteLanguageConfirmationDialog(langCode: String, langName: String, onConfirm: () -> Unit) {

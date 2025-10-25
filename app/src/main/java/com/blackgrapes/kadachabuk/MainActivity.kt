@@ -29,6 +29,7 @@ import android.widget.ProgressBar
 import android.view.animation.AnimationUtils
 import android.view.ViewGroup
 import androidx.cursoradapter.widget.SimpleCursorAdapter
+import androidx.recyclerview.widget.LinearSmoothScroller
 import android.view.Window
 import android.util.TypedValue
 import android.widget.ImageButton
@@ -237,8 +238,11 @@ class MainActivity : AppCompatActivity() {
 
         try {
             downloadedHeadingsAdapter = DownloadedChaptersAdapter(mutableListOf())
+            // Use a custom LayoutManager to control the scroll speed.
+            val speedyLayoutManager = SpeedyLinearLayoutManager(this@MainActivity)
+
             rvDownloadedChapterHeadings.apply {
-                layoutManager = LinearLayoutManager(this@MainActivity)
+                layoutManager = speedyLayoutManager
                 adapter = downloadedHeadingsAdapter
             }
         } catch (e: Exception) {
@@ -326,14 +330,42 @@ class MainActivity : AppCompatActivity() {
         val rvLanguages = dialog.findViewById<RecyclerView>(R.id.rv_languages)
         rvLanguages.layoutManager = LinearLayoutManager(this)
         (rvLanguages.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
-        val languageAdapter = LanguageAdapter(languageNames.zip(languageCodes).toList(), savedLangCode) { langCode, langName ->
-            saveLanguagePreference(langCode)
-            bookViewModel.fetchAndLoadChapters(langCode, langName, forceDownload = false)
-            dialog.dismiss()
-        }
-        rvLanguages.adapter = languageAdapter
 
+        // We need to know which languages are downloaded to show the icons.
+        uiScope.launch {
+            val downloadedCodes = bookViewModel.getDownloadedLanguageCodes()
+            val languageAdapter = LanguageAdapter(
+                languages = languageNames.zip(languageCodes).toList(),
+                downloadedLanguageCodes = downloadedCodes,
+                currentSelectedCode = savedLangCode,
+                onLanguageSelected = { langCode, langName ->
+                    saveLanguagePreference(langCode)
+                    bookViewModel.fetchAndLoadChapters(langCode, langName, forceDownload = false)
+                    dialog.dismiss()
+                },
+                onLanguageDelete = { langCode, langName ->
+                    showDeleteLanguageConfirmationDialog(langCode, langName) {
+                        // This block will be executed on confirmation.
+                        // We dismiss the language selection dialog and then delete.
+                        dialog.dismiss()
+                    }
+                }
+            )
+            rvLanguages.adapter = languageAdapter
+        }
         dialog.show()
+    }
+
+    private fun showDeleteLanguageConfirmationDialog(langCode: String, langName: String, onConfirm: () -> Unit) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Delete Data for $langName?")
+            .setMessage("This will remove all downloaded chapters for this language to free up space. You can download them again later.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Delete") { _, _ ->
+                bookViewModel.deleteChaptersForLanguage(langCode)
+                onConfirm() // Execute the callback to dismiss the other dialog
+            }
+            .show()
     }
 
     private fun saveLanguagePreference(languageCode: String) {
@@ -654,6 +686,18 @@ class MainActivity : AppCompatActivity() {
         val totalReadsTextView = dialogView.findViewById<TextView>(R.id.habit_total_reads)
         val totalTimeTextView = dialogView.findViewById<TextView>(R.id.habit_total_time)
         val habitLayout = dialogView.findViewById<View>(R.id.layout_reading_habit)
+
+        // --- Style the Reset button to match the language delete button ---
+        // 1. Get the theme's error color
+        val typedValue = TypedValue()
+        theme.resolveAttribute(android.R.attr.colorError, typedValue, true)
+        val errorColor = typedValue.data
+
+        // 2. Apply the color to the TextView's text and its drawable icon
+        resetOption.setTextColor(errorColor)
+        val deleteIcon = ContextCompat.getDrawable(this, R.drawable.ic_delete_sweep)?.mutate()
+        deleteIcon?.setTint(errorColor)
+        resetOption.setCompoundDrawablesWithIntrinsicBounds(deleteIcon, null, null, null)
 
         toggleSwitch.text = "Show Reading History"
         toggleSwitch.isChecked = isHistoryVisible
@@ -1033,5 +1077,26 @@ class MainActivity : AppCompatActivity() {
         dialog.window?.attributes?.windowAnimations = R.style.DialogAnimation
 
         dialog.show()
+    }
+
+    /**
+     * A custom LinearLayoutManager that scrolls faster than the default.
+     * This is used for the list of downloading chapters to make the animation quicker.
+     */
+    private class SpeedyLinearLayoutManager(context: Context) : LinearLayoutManager(context) {
+
+        override fun smoothScrollToPosition(recyclerView: RecyclerView, state: RecyclerView.State, position: Int) {
+            val linearSmoothScroller = object : LinearSmoothScroller(recyclerView.context) {
+                // The default value is 25f. A lower value results in a faster scroll.
+                // We'll use 6.25f to make the scroll animation four times as fast.
+                private val MILLISECONDS_PER_INCH = 6.25f
+
+                override fun calculateSpeedPerPixel(displayMetrics: android.util.DisplayMetrics): Float {
+                    return MILLISECONDS_PER_INCH / displayMetrics.densityDpi
+                }
+            }
+            linearSmoothScroller.targetPosition = position
+            startSmoothScroll(linearSmoothScroller)
+        }
     }
 }

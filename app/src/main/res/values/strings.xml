@@ -17,6 +17,8 @@
     <string name="retry_button_text">Retry</string>
     <string name="default_error_message">Something went wrong! Please connect to the internet and try again.</string>
     <string name="video_thumbnail">Video thumbnail</string>
+    <string name="downloaded_status">Downloaded status</string>
+    <string name="delete_downloaded_data">Delete downloaded data</string>
 
 
     <string-array name="language_names">

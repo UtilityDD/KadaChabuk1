@@ -27,6 +27,9 @@ interface ChapterDao {
     @Query("SELECT COUNT(*) FROM chapters WHERE languageCode = :languageCode")
     suspend fun getChapterCountForLanguage(languageCode: String): Int
 
+    @Query("SELECT DISTINCT languageCode FROM chapters")
+    suspend fun getDistinctLanguageCodes(): List<String>
+
     // Transaction to delete old and insert new chapters for a language atomically
     @Transaction
     suspend fun replaceChaptersForLanguage(languageCode: String, newChapters: List<Chapter>) {

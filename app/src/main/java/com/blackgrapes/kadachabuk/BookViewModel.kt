@@ -158,6 +158,23 @@ class BookViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    suspend fun getDownloadedLanguageCodes(): Set<String> {
+        return repository.getDownloadedLanguageCodes()
+    }
+
+    fun deleteChaptersForLanguage(languageCode: String) {
+        viewModelScope.launch {
+            repository.deleteChaptersForLanguage(languageCode)
+            // If the deleted language is the currently displayed one, clear the list.
+            if (_chapters.value?.any { it.languageCode == languageCode } == true) {
+                _chapters.postValue(emptyList())
+                // You might want to trigger the language selection dialog again here
+                // or load a default language. For now, we'll just clear the screen.
+                _loadingStatusMessage.postValue("Data for '$languageCode' has been deleted.")
+            }
+        }
+    }
+
     fun onErrorShown() {
         _error.value = null
     }

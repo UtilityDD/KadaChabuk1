@@ -122,7 +122,7 @@ class ChapterAdapter(private var chapters: List<Chapter>) :
                 // Use the theme's primary color for the stroke.
                 // R.color.design_default_color_primary is a private resource.
                 val typedValue = android.util.TypedValue()
-
+                cardView.context.theme.resolveAttribute(android.R.attr.colorPrimary, typedValue, true)
                 cardView.strokeColor = typedValue.data
 
             } else {

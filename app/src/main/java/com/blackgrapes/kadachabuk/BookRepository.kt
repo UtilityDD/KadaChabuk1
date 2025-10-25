@@ -523,4 +523,29 @@ class BookRepository(private val context: Context) {
         }
         return contributors
     }
+
+    /**
+     * Deletes all chapters and associated preferences for a given language.
+     */
+    suspend fun deleteChaptersForLanguage(languageCode: String) {
+        withContext(Dispatchers.IO) {
+            // Delete from Room database
+            chapterDao.deleteChaptersByLanguage(languageCode)
+
+            // Delete version info from SharedPreferences
+            val versionPrefs = context.getSharedPreferences(VERSION_INFO_PREFS, Context.MODE_PRIVATE)
+            versionPrefs.edit().remove("version_$languageCode").apply()
+
+            Log.i("BookRepository", "Deleted all data for language: $languageCode")
+        }
+    }
+
+    /**
+     * Returns a set of language codes for which chapters exist in the database.
+     */
+    suspend fun getDownloadedLanguageCodes(): Set<String> {
+        return withContext(Dispatchers.IO) {
+            chapterDao.getDistinctLanguageCodes().toSet()
+        }
+    }
 }

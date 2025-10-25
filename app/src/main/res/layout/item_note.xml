@@ -16,6 +16,7 @@
             android:layout_height="wrap_content"
             android:background="@android:color/transparent"
             android:lineSpacingMultiplier="1.2"
+            android:inputType="textMultiLine|textNoSuggestions"
             android:padding="16dp"
             android:textAppearance="?attr/textAppearanceBody2"
             app:layout_constraintEnd_toEndOf="parent"

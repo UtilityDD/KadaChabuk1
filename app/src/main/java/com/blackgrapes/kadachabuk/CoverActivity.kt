@@ -34,6 +34,7 @@ class CoverActivity : AppCompatActivity() {
 
     private val animationScope = CoroutineScope(Dispatchers.Main)
     private var animationJob: Job? = null
+    private var isAnimationSkippable = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +64,13 @@ class CoverActivity : AppCompatActivity() {
 
         // Pre-load chapters in the background
         preloadChapters()
+
+        coverLayout.setOnClickListener {
+            if (isAnimationSkippable) {
+                // If the text animation is running, skip to the end of it.
+                skipAnimation()
+            }
+        }
     }
 
     private fun startAnimationSequence() {
@@ -123,6 +131,8 @@ class CoverActivity : AppCompatActivity() {
             coverLayout.setOnClickListener {
                 navigateToMain()
             }
+            // Once the main animation is done, it's no longer skippable.
+            isAnimationSkippable = false
         }
     }
 
@@ -141,6 +151,39 @@ class CoverActivity : AppCompatActivity() {
         }
     }
 
+    private fun skipAnimation() {
+        // Prevent multiple skips
+        if (!isAnimationSkippable) return
+        isAnimationSkippable = false
+
+        // Cancel the ongoing text animation
+        animationJob?.cancel()
+
+        // Launch a new coroutine to perform the final part of the animation instantly
+        animationJob = animationScope.launch {
+            // 1. Clean up views from the text animation
+            titleTextView.animate().cancel()
+            titleTextView.visibility = View.GONE
+
+            // 2. Immediately show the final state
+            coverImageView.alpha = 1f
+            coverImageView.scaleX = 1f
+            coverImageView.scaleY = 1f
+            coverImageView.visibility = View.VISIBLE
+
+            tapToOpenText.alpha = 1f
+            tapToOpenText.visibility = View.VISIBLE
+
+            // 3. Start the pulse animation on the "tap to open" text
+            val pulse = AnimationUtils.loadAnimation(this@CoverActivity, R.anim.pulse)
+            tapToOpenText.startAnimation(pulse)
+
+            // 4. Set the click listener to wait for the user's final tap to navigate
+            coverLayout.setOnClickListener {
+                navigateToMain()
+            }
+        }
+    }
     private fun navigateToMain() {
         // Stop the animation when we navigate away
         animationJob?.cancel()

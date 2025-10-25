@@ -150,8 +150,9 @@ class VideoActivity : AppCompatActivity(), VideoPlaybackListener, OnFavoriteChan
                     videoMap["Favorites"] = favoriteVideos
 
                     val categories = listOf("Favorites", "Speech", "Mahanam", "Vedic Song")
-                    val fragments = categories.map { category ->
-                        VideoListFragment.newInstance(videoMap[category] ?: emptyList())
+                    val fragments = categories.mapIndexed { index, category ->
+                        val isFavoritesTab = index == 0
+                        VideoListFragment.newInstance(videoMap[category] ?: emptyList(), isFavoritesTab) // This line is now valid
                     }
 
                     val adapter = VideoPagerAdapter(this@VideoActivity, fragments)

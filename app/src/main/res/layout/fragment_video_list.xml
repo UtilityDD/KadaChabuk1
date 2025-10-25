@@ -5,7 +5,7 @@
     android:layout_height="match_parent">
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/videosRecyclerView"
+        android:id="@+id/video_list_recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
@@ -13,6 +13,21 @@
         android:paddingTop="8dp"
         android:paddingEnd="8dp"
         android:paddingBottom="80dp" />
+
+    <TextView
+        android:id="@+id/empty_favorites_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:drawablePadding="16dp"
+        android:gravity="center"
+        android:padding="32dp"
+        android:text="Add videos to your favorites by tapping the ♡ icon."
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        app:drawableTopCompat="@drawable/ic_favorite_border"
+        app:drawableTint="?attr/colorOnSurfaceVariant" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_scroll_to_top"

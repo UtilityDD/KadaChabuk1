@@ -53,6 +53,7 @@ import androidx.recyclerview.widget.SimpleItemAnimator
 import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import androidx.core.text.HtmlCompat
 import androidx.core.app.ShareCompat
 import com.airbnb.lottie.LottieAnimationView
 import com.google.android.material.snackbar.Snackbar
@@ -386,9 +387,19 @@ class MainActivity : AppCompatActivity() {
                 downloadedLanguageCodes = downloadedCodes,
                 currentSelectedCode = savedLangCode,
                 onLanguageSelected = { langCode, langName ->
-                    saveLanguagePreference(langCode)
-                    bookViewModel.fetchAndLoadChapters(langCode, langName, forceDownload = false)
-                    dialog.dismiss()
+                    // If the language is already downloaded, switch to it immediately.
+                    if (downloadedCodes.contains(langCode)) {
+                        saveLanguagePreference(langCode)
+                        bookViewModel.fetchAndLoadChapters(langCode, langName, forceDownload = false)
+                        dialog.dismiss()
+                    } else {
+                        // If not downloaded, show a confirmation dialog before proceeding.
+                        showDownloadConfirmationDialog(langName) {
+                            saveLanguagePreference(langCode)
+                            bookViewModel.fetchAndLoadChapters(langCode, langName, forceDownload = false)
+                            dialog.dismiss()
+                        }
+                    }
                 },
                 onLanguageDelete = { langCode, langName ->
                     showDeleteLanguageConfirmationDialog(langCode, langName) {
@@ -401,6 +412,20 @@ class MainActivity : AppCompatActivity() {
             rvLanguages.adapter = languageAdapter
         }
         dialog.show()
+    }
+
+    private fun showDownloadConfirmationDialog(langName: String, onConfirm: () -> Unit) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Download Chapters?")
+            .setMessage(HtmlCompat.fromHtml(
+                "<i>Kada Chabuk</i> in '$langName' are not downloaded. Would you like to download them now? This may take a few moments depending on your network speed.",
+                HtmlCompat.FROM_HTML_MODE_LEGACY
+            ))
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Download") { _, _ ->
+                onConfirm()
+            }
+            .show()
     }
 
     private fun showDeleteLanguageConfirmationDialog(langCode: String, langName: String, onConfirm: () -> Unit) {

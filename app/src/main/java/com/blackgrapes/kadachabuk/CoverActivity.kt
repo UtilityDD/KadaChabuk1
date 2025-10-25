@@ -1,26 +1,39 @@
 package com.blackgrapes.kadachabuk
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.content.res.Configuration
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class CoverActivity : AppCompatActivity() {
 
     private val bookViewModel: BookViewModel by viewModels()
     private lateinit var coverLayout: View
+    private lateinit var titleTextView: TextView
+    private lateinit var coverImageView: ImageView
     private lateinit var tapToOpenText: TextView
+
+    private val animationScope = CoroutineScope(Dispatchers.Main)
+    private var animationJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,23 +54,92 @@ class CoverActivity : AppCompatActivity() {
         controller?.isAppearanceLightStatusBars = isNightMode
 
         coverLayout = findViewById(R.id.cover_layout)
-        tapToOpenText = findViewById(R.id.textView)
+        titleTextView = findViewById(R.id.title_text_view)
+        coverImageView = findViewById(R.id.cover_image)
+        tapToOpenText = findViewById(R.id.tap_to_open_text)
 
-        // Animate the "tap to open" text
-        val fadeInOut = AnimationUtils.loadAnimation(this, R.anim.fade_in_out)
-        tapToOpenText.startAnimation(fadeInOut)
+        // Start the animation sequence
+        startAnimationSequence()
 
         // Pre-load chapters in the background
         preloadChapters()
+    }
 
-        // Set a click listener on the root view to proceed on tap
-        coverLayout.setOnClickListener {
-            navigateToMain()
+    private fun startAnimationSequence() {
+        animationJob = animationScope.launch {
+            val languages = listOf(
+                "কড়া চাবুক", // Bengali
+                "कड़ा चाबुक", // Hindi
+                "Kada Chabuk", // English
+                "கடா சாபுக்", // Tamil
+                "ಕಡಾ ಚಾಬುಕ್", // Kannada
+                "કડા ચાબુક", // Gujarati
+                "କଡ଼ା ଚାବୁକ", // Odia
+                "ਕੜਾ ਚਾਬੁਕ", // Punjabi
+                "കടാ ചാബുക്ക്", // Malayalam
+                "కడా చాబుక్"  // Telugu
+            )
+
+            // Hide views initially
+            titleTextView.alpha = 0f
+            coverImageView.alpha = 0f
+            coverImageView.scaleX = 0f
+            coverImageView.scaleY = 0f
+            tapToOpenText.alpha = 0f
+
+            delay(300) // Initial delay
+
+            // 1. Multilingual Text Sequence
+            for (text in languages) {
+                titleTextView.text = text
+                fadeIn(titleTextView, 300)
+                delay(600) // Time the text is visible
+                fadeOut(titleTextView, 300)
+                delay(50) // Brief pause between texts
+            }
+
+            // 2. PNG Reveal
+            titleTextView.visibility = View.GONE
+            coverImageView.visibility = View.VISIBLE
+            coverImageView.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(600)
+                .setInterpolator(AccelerateDecelerateInterpolator())
+                .start()
+
+            delay(400) // Wait a bit before showing the "tap to open" text
+
+            // 3. "Touch to Open" text with pulse animation
+            tapToOpenText.visibility = View.VISIBLE
+            fadeIn(tapToOpenText, 400)
+            val pulse = AnimationUtils.loadAnimation(this@CoverActivity, R.anim.pulse)
+            tapToOpenText.startAnimation(pulse)
+
+            // 4. Enable navigation
+            coverLayout.setOnClickListener {
+                navigateToMain()
+            }
         }
+    }
+
+    private suspend fun fadeIn(view: View, duration: Long) {
+        view.alpha = 0f
+        view.visibility = View.VISIBLE
+        view.animate().alpha(1f).setDuration(duration).start()
+        delay(duration)
+    }
+
+    private suspend fun fadeOut(view: View, duration: Long) {
+        view.animate().alpha(0f).setDuration(duration).start()
+        delay(duration)
+        view.visibility = View.INVISIBLE
     }
 
     private fun navigateToMain() {
         // Stop the animation when we navigate away
+        animationJob?.cancel()
         coverLayout.setOnClickListener(null) // Prevent double taps
 
         // Now it's safe to start the new activity and its transition.
@@ -75,6 +157,8 @@ class CoverActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Cancel the coroutine job to prevent leaks
+        animationJob?.cancel()
     }
 
     private fun preloadChapters() {
